@@ -1,11 +1,14 @@
 import os
 import json
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+import numpy as np
+from fastapi import FastAPI, HTTPException, Request
 from .models.user import UserInformation
+from .models.feedback import UserFeedback
 from db.connector import DBConnector
 from ai.detection import PanicDetectionModel
 from dotenv import load_dotenv
+import httpx
 
 load_dotenv()
 
@@ -69,3 +72,47 @@ async def get_response_ai(uid: str):
     user_data = connector.get_data(path)
     value = model.predict_information(user_data).tolist()[0]
     return {'ai_prediction': value}
+
+
+@app.post("/ia_feedback")
+async def set_ia_feedback(user_res: UserFeedback, request: Request):
+    features = user_res.features
+    label = user_res.user_feedback
+
+    input_df = pd.DataFrame([features])
+    tolerance = 1e-4
+
+    global data
+
+    # Encontra as linhas que batem com os features fornecidos
+    match = data[data[list(features.keys())].apply(
+        lambda row: np.all(np.isclose(row.values, input_df.values[0], atol=tolerance)),
+        axis=1
+    )]
+
+    if not match.empty:
+        data.loc[match.index, 'panic_attack'] = label
+        msg = "Linha existente atualizada com o novo feedback."
+    else:
+        new_row = {**features, 'panic_attack': label}
+        data = pd.concat([data, pd.DataFrame([new_row])], ignore_index=True)
+        msg = "Nova linha adicionada com o feedback."
+
+    # Salva no CSV
+    data.to_csv('panic_attack_data_improved.csv', index=False)
+
+    url = str(request.base_url) + "retrain_model"
+    async with httpx.AsyncClient() as client:
+        await client.post(url)
+
+    return {"message": msg}
+
+@app.post("/retrain_model")
+async def retrain_model():
+    global data, model
+
+    data = pd.read_csv('panic_attack_data_improved.csv')
+    model.data = data
+    model.start_model()
+
+    return {"message": "Modelo reentreinado com sucesso."}
