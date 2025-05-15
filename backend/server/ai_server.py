@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request
 from .models.user import UserInformation
-from .models.feedback import UserFeedback
+from .models.feedback import FeedbackInput
 from db.connector import DBConnector
 from ai.detection import PanicDetectionModel
 from dotenv import load_dotenv
@@ -75,7 +75,7 @@ async def get_response_ai(uid: str):
 
 
 @app.post("/ia_feedback")
-async def set_ia_feedback(user_res: UserFeedback, request: Request):
+async def set_ia_feedback(user_res: FeedbackInput, request: Request):
     features = user_res.features
     label = user_res.user_feedback
 
