@@ -25,8 +25,13 @@ class PanicDetectionModel:
         X_test = self._scaler.transform(X_test)
         
         self._model.fit(X_train, y_train)
+        print("Modelo reentreinando com os dados atualizados...")
+
     
     def predict_information(self, info: dict) -> Any:
         print(info.values())
         normalized_data = self._scaler.transform([list(info.values())])
         return self._model.predict(normalized_data)
+    
+    def update_data(self, new_data: pd.DataFrame) -> None:
+        self._data = new_data

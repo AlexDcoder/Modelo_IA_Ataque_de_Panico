@@ -112,7 +112,7 @@ async def retrain_model():
     global data, model
 
     data = pd.read_csv('panic_attack_data_improved.csv')
-    model.data = data
+    model.update_data(data)
     model.start_model()
 
     return {"message": "Modelo reentreinado com sucesso."}
