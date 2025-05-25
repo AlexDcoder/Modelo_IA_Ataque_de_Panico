@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 
 class UserInformation(BaseModel):
+    uid: str
     heart_rate: float
     respiration_rate: float
     accel_std: float
