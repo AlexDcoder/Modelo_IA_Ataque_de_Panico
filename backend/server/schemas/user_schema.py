@@ -1,10 +1,9 @@
 from pydantic import BaseModel, EmailStr
-from datetime import datetime
 
 class UserPersonalData(BaseModel):
     email: EmailStr
     password: str
-    detection_time: datetime  # Obrigatório
+    detection_time: int  # Obrigatório
 
 class UserVitalData(BaseModel):
     heart_rate: float
@@ -18,7 +17,7 @@ class UserPersonalDataResponse(BaseModel):
     uid: str
     email: str
     password: str
-    detection_time: datetime
+    detection_time: int
 
 class UserVitalDataResponse(BaseModel):
     uid: str

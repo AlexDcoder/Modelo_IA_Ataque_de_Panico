@@ -72,8 +72,7 @@ async def create_user(user_data: UserPersonalData):
     
     # Converte datetime para string ISO se necessário
     user_dict = user_data.dict()
-    if isinstance(user_dict.get('detection_time'), datetime):
-        user_dict['detection_time'] = user_dict['detection_time'].isoformat()
+    user_dict['password'] =str(hash(user_dict['password']))  # Hash da senha
     
     # Adiciona dados e recebe UID gerado
     result = connector.add_data(os.getenv('USER_PERSONAL_REF'), user_dict)
