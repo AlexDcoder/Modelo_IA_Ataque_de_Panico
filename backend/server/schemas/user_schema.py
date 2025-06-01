@@ -13,24 +13,8 @@ class UserVitalData(BaseModel):
     stress_level: float
 
 # Schemas de resposta (com uid gerado)
-class UserPersonalDataResponse(BaseModel):
+class UserPersonalDataResponse(UserPersonalData):
     uid: str
-    email: str
-    password: str
-    detection_time: int
 
-class UserVitalDataResponse(BaseModel):
+class UserVitalDataResponse(UserVitalData):
     uid: str
-    heart_rate: float
-    respiration_rate: float
-    accel_std: float
-    spo2: float
-    stress_level: float
-
-# Para compatibilidade com código existente (deprecated)
-class UserInformation(BaseModel):
-    heart_rate: float
-    respiration_rate: float
-    accel_std: float
-    spo2: float
-    stress_level: float

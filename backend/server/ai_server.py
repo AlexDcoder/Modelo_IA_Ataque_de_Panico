@@ -3,14 +3,15 @@ import logging
 import pandas as pd
 import numpy as np
 import httpx
+
 from datetime import datetime
+from dotenv import load_dotenv
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
 from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 
-from .schemas.user_schema import UserPersonalData, UserVitalData, UserInformation, \
+from .schemas.user_schema import UserPersonalData, UserVitalData, \
     UserPersonalDataResponse, UserVitalDataResponse
 from .schemas.feedback_schema import FeedbackInput
 
@@ -43,10 +44,10 @@ async def lifespan(app: FastAPI):
 # FastAPI app
 app = FastAPI(lifespan=lifespan)
 
-# CORS setup
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Ajustar em produção
+    allow_origins=["*"],  # ou especifique seu IP/origem exata
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -70,20 +71,23 @@ async def get_user(uid: str):
 async def create_user(user_data: UserPersonalData):
     """Cria usuário com UID gerado automaticamente pelo Firebase"""
     
-    # Converte datetime para string ISO se necessário
+    all_users = connector.get_data(os.getenv('USER_PERSONAL_REF')) or {}
+
+    # Verificação por campo único (ex: email ou cpf)
+    for uid, user in all_users.items():
+        if user.get("email") == user_data.email:
+            logger.info(f"Usuário com email {user_data.email} já existe com UID: {uid}")
+            return UserPersonalDataResponse(uid=uid, **user)
+
     user_dict = user_data.dict()
-    user_dict['password'] =str(hash(user_dict['password']))  # Hash da senha
-    
-    # Adiciona dados e recebe UID gerado
+    user_dict['password'] = str(hash(user_dict['password']))  # Hash da senha
+
+    # Criação do novo usuário
     result = connector.add_data(os.getenv('USER_PERSONAL_REF'), user_dict)
     generated_uid = result["uid"]
-    
+
     logger.info(f"Usuário criado com UID: {generated_uid}")
-    
-    return UserPersonalDataResponse(
-        uid=generated_uid,
-        **user_dict
-    )
+    return UserPersonalDataResponse(uid=generated_uid, **user_dict)
 
 @app.put("/server/users/{uid}", response_model=UserPersonalDataResponse)
 async def update_user(uid: str, user_data: UserPersonalData):
@@ -119,7 +123,7 @@ async def get_user_vital_data(uid: str):
     vital_data = connector.get_data(path)
     if vital_data is None:
         raise HTTPException(status_code=404, detail="Dados vitais não encontrados")
-    return {"uid": uid, **vital_data}
+    return UserVitalDataResponse(uid=uid, **vital_data)
 
 @app.post("/server/vital-data/{uid}")
 async def create_vital_data(uid: str, vital_data: UserVitalData, request: Request):
@@ -236,16 +240,3 @@ async def retrain_model():
     model.update_data(data)
     model.start_model()
     return RedirectResponse(url='/', status_code=303)
-
-# ===== ROTAS DE COMPATIBILIDADE (DEPRECATED) =====
-@app.post("/server/users/legacy", response_model=UserVitalDataResponse)
-async def upsert_user_legacy(user_info: UserInformation):
-    """
-    DEPRECATED: Use /server/vital-data instead
-    Mantido para compatibilidade com código antigo
-    """
-    logger.warning(" Using deprecated endpoint. Please use /server/vital-data instead.")
-    
-    # Converte para novo formato
-    vital_data = UserVitalData(**user_info.dict())
-    return await create_vital_data(vital_data)
