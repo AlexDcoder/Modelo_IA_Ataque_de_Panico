@@ -46,7 +46,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ou especifique seu IP/origem exata
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,7 +107,6 @@ async def update_user(uid: str, user_data: UserPersonalData):
         **user_dict
     )
 
-# ===== ROTAS PARA DADOS VITAIS =====
 @app.get("/server/vital-data")
 async def get_all_vital_data():
     """Retorna todos os dados vitais"""
