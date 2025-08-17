@@ -3,43 +3,41 @@ import 'dart:convert';
 import 'package:smartwatch_app/models/request/user_personal_data.dart';
 import 'package:smartwatch_app/models/request/user_vital_data.dart';
 import 'package:smartwatch_app/models/response/user_feedback.dart';
+import 'package:smartwatch_app/models/response/user_personal_data.dart';
+import 'package:smartwatch_app/models/response/user_vital_data.dart';
 import 'package:smartwatch_app/services/api_client.dart';
-
-class UserResponse {
-  final String uid;
-
-  UserResponse({required this.uid});
-
-  factory UserResponse.fromJson(Map<String, dynamic> json) {
-    return UserResponse(uid: json['uid']);
-  }
-}
 
 class UserService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<UserResponse?> createUser(UserPersonalData user) async {
+  // Cria um usuário e retorna o response completo
+  Future<UserPersonalDataResponse?> createUser(UserPersonalData user) async {
     final response = await _apiClient.post('users', user.toJson());
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final json = jsonDecode(response.body);
-      return UserResponse.fromJson(json);
+      return UserPersonalDataResponse.fromJson(json);
     } else {
       print('Erro ao criar usuário: ${response.statusCode} ${response.body}');
       return null;
     }
   }
 
-  Future<bool> createVitalData(String uid, UserVitalData vitals) async {
+  // Cria dados vitais e retorna o response completo
+  Future<UserVitalDataResponse?> createVitalData(
+    String uid,
+    UserVitalData vitals,
+  ) async {
     final response = await _apiClient.post('vital-data/$uid', vitals.toJson());
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return true;
+      final json = jsonDecode(response.body);
+      return UserVitalDataResponse.fromJson(json);
     } else {
       print(
         'Erro ao enviar dados vitais: ${response.statusCode} ${response.body}',
       );
-      return false;
+      return null;
     }
   }
 
@@ -54,13 +52,13 @@ class UserService {
     }
   }
 
-  // Novo método para buscar usuário por UID (GET)
-  Future<UserResponse?> getUserById(String uid) async {
+  // Buscar usuário por UID e retornar o response completo
+  Future<UserPersonalDataResponse?> getUserById(String uid) async {
     final response = await _apiClient.get('users/$uid');
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body);
-      return UserResponse.fromJson(json);
+      return UserPersonalDataResponse.fromJson(json);
     } else {
       print('Erro ao buscar usuário: ${response.statusCode} ${response.body}');
       return null;

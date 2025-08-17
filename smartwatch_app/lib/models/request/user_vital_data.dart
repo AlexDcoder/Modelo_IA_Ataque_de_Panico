@@ -1,4 +1,3 @@
-// user_vital_data.dart
 class UserVitalData {
   final double heartRate;
   final double respirationRate;

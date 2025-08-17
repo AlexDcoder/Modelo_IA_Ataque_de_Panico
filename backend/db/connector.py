@@ -39,26 +39,6 @@ class RTDBConnector:
             except Exception as e:
                 raise RuntimeError(f"Error connecting to Firebase: {e}")
 
-    def add_data(self, db_ref: str, user_data: dict) -> Dict[str, str]:
-        """
-        Adiciona dados com UID gerado automaticamente pelo Firebase
-        Args:
-            db_ref: Referência base (ex: 'users' ou 'vital_data')
-            user_data: Dados a serem salvos (sem uid)
-        Returns:
-            Dict com message e o uid gerado
-        """
-        if not self._app:
-            raise RuntimeError("Database not connected. Call connect_db() first.")
-        try:
-            ref = db.reference(db_ref, app=self._app)
-            # push() gera um UID automático e retorna a referência
-            new_ref = ref.push(user_data)
-            generated_uid = new_ref.key
-            return {"message": "Data saved successfully", "uid": generated_uid}
-        except Exception as e:
-            raise RuntimeError(f"Failed to add data at '{db_ref}': {e}")
-
     def add_data(self, db_ref: str, user_data: dict, uid: Optional[str] = None) -> Dict[str, str]:
         """
         Adiciona dados no Firebase RTDB.
@@ -115,9 +95,7 @@ class RTDBConnector:
         if not self._app:
             raise RuntimeError("Database not connected. Call connect_db() first.")
         try:
-            # Remove uid dos updates se existir
             clean_updates = {k: v for k, v in updates.items() if k != 'uid'}
-            
             ref = db.reference(db_ref, app=self._app)
             ref.update(clean_updates)
             return True

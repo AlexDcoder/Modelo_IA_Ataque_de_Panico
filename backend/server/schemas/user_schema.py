@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr
 class UserPersonalData(BaseModel):
     email: EmailStr
     password: str
-    detection_time: int  # Obrigatório
+    detection_time: int
 
 class UserVitalData(BaseModel):
     heart_rate: float
@@ -12,7 +12,6 @@ class UserVitalData(BaseModel):
     spo2: float
     stress_level: float
 
-# Schemas de resposta (com uid gerado)
 class UserPersonalDataResponse(UserPersonalData):
     uid: str
 
