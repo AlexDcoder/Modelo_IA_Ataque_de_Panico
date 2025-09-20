@@ -24,7 +24,7 @@ android {
         applicationId = "com.example.smartwatch_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 29
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -37,6 +37,22 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    flatDir {
+        dirs("libs")
+    }
+}
+
+dependencies {
+    implementation(kotlin("stdlib-jdk7"))
+
+    // Samsung Health SDK
+    implementation(files("libs/samsung-health-data-api-1.0.0.aar"))
+
 }
 
 flutter {

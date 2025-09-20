@@ -9,6 +9,24 @@ import 'package:smartwatch_app/models/request/user_vital_data.dart';
 import 'package:smartwatch_app/models/response/user_feedback.dart';
 import 'package:smartwatch_app/services/user_service.dart';
 
+import 'package:flutter/services.dart';
+
+class SamsungHealthService {
+  static const _channel = MethodChannel('com.plenimind/samsung_health');
+
+  // Função para buscar batimentos
+  static Future<double?> getHeartRate() async {
+    try {
+      final double bpm = await _channel.invokeMethod('getHeartRate');
+      return bpm;
+    } on PlatformException catch (e) {
+      print("Erro ao acessar Samsung Health: ${e.message}");
+      return null;
+    }
+  }
+}
+
+
 class UserFormPage extends StatefulWidget {
   const UserFormPage({super.key});
 
@@ -81,36 +99,35 @@ class _UserFormPageState extends State<UserFormPage> {
   Future<void> _sendVitalData() async {
     if (uid == null) return;
 
-    final generatedVitals = UserVitalData(
-      heartRate: 60 + _random.nextDouble() * 40,
-      respirationRate: 12 + _random.nextDouble() * 8,
-      accelStd: _random.nextDouble() * 0.5,
-      spo2: 92 + _random.nextDouble() * 6,
-      stressLevel: _random.nextDouble() * 5,
+    final bpm = await SamsungHealthService.getHeartRate();
+    if (bpm == null) return;
+
+    final latestVitals = UserVitalData(
+      heartRate: bpm,
+      respirationRate: 0,
+      accelStd: 0,
+      spo2: 0,
+      stressLevel: 0,
     );
 
-    await userService.createVitalData(uid!, generatedVitals);
+    await userService.createVitalData(uid!, latestVitals);
 
     final prediction = await userService.getAiPrediction(uid!);
 
     if (prediction != null && mounted) {
-      setState(() {
-        _isWaitingResponse = true;
-      });
+      setState(() { _isWaitingResponse = true; });
 
       final features = {
-        'heart_rate': generatedVitals.heartRate,
-        'respiration_rate': generatedVitals.respirationRate,
-        'accel_std': generatedVitals.accelStd,
-        'spo2': generatedVitals.spo2,
-        'stress_level': generatedVitals.stressLevel,
+        'heart_rate': latestVitals.heartRate,
+        'respiration_rate': latestVitals.respirationRate,
+        'accel_std': latestVitals.accelStd,
+        'spo2': latestVitals.spo2,
+        'stress_level': latestVitals.stressLevel,
       };
 
       await _showNotification(prediction['ai_prediction'].toString(), features);
 
-      setState(() {
-        _isWaitingResponse = false;
-      });
+      setState(() { _isWaitingResponse = false; });
     }
   }
 
