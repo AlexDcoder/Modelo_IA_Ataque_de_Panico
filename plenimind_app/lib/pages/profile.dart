@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../pages/contact.dart';
 import 'package:plenimind_app/components/profile/profie_form.dart';
 import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/schemas/profile/profile_model.dart';
@@ -45,7 +46,7 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    //Navigator.pushNamed(context, BluetoothPage.routePath);
+    Navigator.pushNamed(context, ContactListPage.routePath);
   }
 
   void _showSnackBar(String message) {
