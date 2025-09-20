@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  contacts_service: ^0.6.3
+  shared_preferences: ^2.2.2
+
   flutter_blue_plus: ^1.5.10
   permission_handler: ^12.0.1
   http: ^1.4.0

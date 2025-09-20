@@ -46,7 +46,7 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    Navigator.pushNamed(context, ContactListPage.routePath);
+    Navigator.pushNamed(context, ContactPage.routePath);
   }
 
   void _showSnackBar(String message) {
