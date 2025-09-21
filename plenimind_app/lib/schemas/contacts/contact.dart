@@ -110,16 +110,18 @@
 // }
 
 
-class EmergencyContact {
+class Contact {
   final String id;
   final String name;
   final String phone;
-  final int priority; // 1 é mais prioritário
+  final String imageUrl;
+  final int priority;
 
-  EmergencyContact({
+  Contact({
     required this.id,
     required this.name,
     required this.phone,
+    required this.imageUrl,
     required this.priority,
   });
 
@@ -127,13 +129,15 @@ class EmergencyContact {
         'id': id,
         'name': name,
         'phone': phone,
+        'img': imageUrl,
         'priority': priority,
       };
 
-  factory EmergencyContact.fromJson(Map<String, dynamic> j) => EmergencyContact(
+  factory Contact.fromJson(Map<String, dynamic> j) => Contact(
         id: j['id'],
         name: j['name'],
         phone: j['phone'],
+        imageUrl: j['img'],
         priority: j['priority'],
       );
 }

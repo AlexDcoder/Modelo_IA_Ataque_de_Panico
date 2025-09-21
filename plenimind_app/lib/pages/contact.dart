@@ -282,10 +282,9 @@
 // }
 
 import 'package:flutter/material.dart';
-import 'package:contacts_service/contacts_service.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:plenimind_app/service/contact_service.dart';
+import 'package:plenimind_app/components/contact/contact_item.dart';
+import 'package:plenimind_app/schemas/contacts/contact.dart';
 
 class ContactPage extends StatefulWidget {
   static const String routePath = '/contacts';
@@ -297,86 +296,91 @@ class ContactPage extends StatefulWidget {
 }
 
 class _ContactPageState extends State<ContactPage> {
-  List<Contact> _contacts = [];
-  final Set<int> _selectedIndexes = {};
+  List<Contact> _deviceContacts = [];
+  List<Contact> _emergencyContacts = [];
+  final Set<String> _selectedContactIds = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _initializeContacts();
+    _loadData();
   }
 
-  Future<void> _initializeContacts() async {
-    await _loadContacts();
-    await _loadSaved();
-    setState(() => _isLoading = false);
-  }
-
-  Future<void> _loadContacts() async {
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    
     try {
-      final permission = await Permission.contacts.request();
-      if (permission.isGranted) {
-        final all = await ContactsService.getContacts(withThumbnails: false);
-        // Filtra apenas contatos com telefone
-        final validContacts = all.where((c) => 
-          c.phones!.isNotEmpty && 
-          (c.displayName?.isNotEmpty ?? false)
-        ).toList();
+      // Carrega contatos salvos como emergência
+      final emergencyContacts = await ContactService.getEmergencyContacts();
+      
+      // Carrega contatos do celular
+      final deviceContacts = await ContactService.getDeviceContacts();
+      
+      // Marca contatos que já são de emergência
+      final emergencyPhones = emergencyContacts.map((c) => c.phone).toSet();
+      
+      setState(() {
+        _emergencyContacts = emergencyContacts;
+        _deviceContacts = deviceContacts;
         
-        setState(() => _contacts = validContacts);
-      } else {
-        _showSnackBar("Permissão para acessar contatos negada");
-      }
-    } catch (e) {
-      _showSnackBar("Erro ao carregar contatos: $e");
-    }
-  }
-
-  Future<void> _loadSaved() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString("emergency_contacts");
-      if (saved != null) {
-        final list = json.decode(saved) as List;
-        setState(() {
-          _selectedIndexes.clear();
-          for (var phone in list) {
-            final index = _contacts.indexWhere((c) =>
-                c.phones!.isNotEmpty && c.phones!.first.value == phone);
-            if (index >= 0) _selectedIndexes.add(index);
+        // Seleciona os que já são de emergência
+        _selectedContactIds.clear();
+        for (final deviceContact in _deviceContacts) {
+          if (emergencyPhones.contains(deviceContact.phone)) {
+            _selectedContactIds.add(deviceContact.id);
           }
-        });
-      }
+        }
+      });
     } catch (e) {
-      _showSnackBar("Erro ao carregar contatos salvos: $e");
+      _showSnackBar('Erro: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _saveSelection() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final selectedPhones = _selectedIndexes.map((i) {
-        return _contacts[i].phones!.isNotEmpty ? _contacts[i].phones!.first.value ?? "" : "";
-      }).where((p) => p.isNotEmpty).toList();
+      // Pega os contatos selecionados
+      final selectedContacts = _deviceContacts
+          .where((contact) => _selectedContactIds.contains(contact.id))
+          .toList();
 
-      await prefs.setString("emergency_contacts", json.encode(selectedPhones));
-      _showSnackBar("Contatos de emergência salvos (${selectedPhones.length})");
+      // Atribui prioridades (1 = mais importante)
+      final contactsWithPriority = selectedContacts.asMap().entries.map((entry) {
+        final index = entry.key;
+        final contact = entry.value;
+        
+        return Contact(
+          id: contact.id,
+          name: contact.name,
+          phone: contact.phone,
+          imageUrl: contact.imageUrl,
+          priority: index + 1, // 1, 2, 3, 4, 5
+        );
+      }).toList();
+
+      // Salva
+      await ContactService.saveEmergencyContacts(contactsWithPriority);
+      _showSnackBar('${contactsWithPriority.length} contatos de emergência salvos!');
+      
+      // Recarrega para mostrar atualizações
+      await _loadData();
     } catch (e) {
-      _showSnackBar("Erro ao salvar contatos: $e");
+      _showSnackBar('Erro ao salvar: $e');
     }
   }
 
-  void _toggleSelection(int index) {
+  void _toggleContact(String contactId, bool? selected) {
     setState(() {
-      if (_selectedIndexes.contains(index)) {
-        _selectedIndexes.remove(index);
-      } else {
-        if (_selectedIndexes.length < 5) {
-          _selectedIndexes.add(index);
+      if (selected == true) {
+        if (_selectedContactIds.length < 5) {
+          _selectedContactIds.add(contactId);
         } else {
-          _showSnackBar("Máximo de 5 contatos permitidos");
+          _showSnackBar('Máximo 5 contatos de emergência');
         }
+      } else {
+        _selectedContactIds.remove(contactId);
       }
     });
   }
@@ -396,77 +400,105 @@ class _ContactPageState extends State<ContactPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Contatos de Emergência"),
-            if (_selectedIndexes.isNotEmpty)
-              Text(
-                "${_selectedIndexes.length}/5 selecionados",
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+            Text('Contatos de Emergência'),
+            Text(
+              '${_selectedContactIds.length}/5 selecionados',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: Icon(Icons.save),
-            onPressed: _selectedIndexes.isNotEmpty ? _saveSelection : null,
-            tooltip: "Salvar seleção",
-          )
+            onPressed: _selectedContactIds.isNotEmpty ? _saveSelection : null,
+            tooltip: 'Salvar contatos',
+          ),
         ],
       ),
       body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text("Carregando contatos..."),
+          ? Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                // Mostra contatos de emergência salvos (se houver)
+                if (_emergencyContacts.isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    color: Colors.green.shade50,
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.emergency, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text(
+                              'Seus Contatos de Emergência:',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        ..._emergencyContacts.map((contact) => ContactItem(
+                              contact: contact,
+                              isSelected: true,
+                              onChanged: (value) {}, // Só exibição
+                              isDisabled: true,
+                              showPriority: true,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1),
                 ],
-              ),
-            )
-          : _contacts.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                
+                // Título da seção de seleção
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
                     children: [
-                      Icon(Icons.contacts, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text("Nenhum contato encontrado"),
-                      TextButton(
-                        onPressed: _loadContacts,
-                        child: Text("Tentar novamente"),
+                      Icon(Icons.contacts),
+                      SizedBox(width: 8),
+                      Text(
+                        'Escolha contatos do seu celular:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
-                )
-              : ListView.builder(
-                  itemCount: _contacts.length,
-                  itemBuilder: (context, index) {
-                    final c = _contacts[index];
-                    final phone = c.phones!.first.value ?? "Sem número";
-                    final isSelected = _selectedIndexes.contains(index);
-
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isSelected ? Colors.green : null,
-                        child: Text(
-                          c.displayName!.substring(0, 1).toUpperCase(),
-                          style: TextStyle(
-                            color: isSelected ? Colors.white : null,
-                          ),
-                        ),
-                      ),
-                      title: Text(c.displayName!),
-                      subtitle: Text(phone),
-                      trailing: Icon(
-                        isSelected ? Icons.check_circle : Icons.check_circle_outline,
-                        color: isSelected ? Colors.green : Colors.grey,
-                      ),
-                      onTap: () => _toggleSelection(index),
-                      selected: isSelected,
-                      selectedTileColor: Colors.green.withOpacity(0.1),
-                    );
-                  },
                 ),
+                
+                // Lista de contatos do celular
+                Expanded(
+                  child: _deviceContacts.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.contacts, size: 64, color: Colors.grey),
+                              Text('Nenhum contato encontrado'),
+                              TextButton(
+                                onPressed: _loadData,
+                                child: Text('Tentar novamente'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _deviceContacts.length,
+                          itemBuilder: (context, index) {
+                            final contact = _deviceContacts[index];
+                            final isSelected = _selectedContactIds.contains(contact.id);
+                            
+                            return ContactItem(
+                              contact: contact,
+                              isSelected: isSelected,
+                              onChanged: (selected) => _toggleContact(contact.id, selected),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 }
