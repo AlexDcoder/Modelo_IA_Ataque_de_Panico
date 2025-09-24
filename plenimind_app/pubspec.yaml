@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  contacts_service: ^0.6.3
+  fast_contacts: ^4.0.0
   shared_preferences: ^2.2.2
 
   flutter_blue_plus: ^1.5.10

@@ -3,87 +3,70 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:contacts_service/contacts_service.dart' as ContactsLib;
+import 'package:fast_contacts/fast_contacts.dart' as fc;
+
 import 'package:plenimind_app/schemas/contacts/contact.dart';
 
 class ContactService {
   static const String _storageKey = 'user_emergency_contacts';
 
-  // Busca contatos salvos do usuário
+  /// Recupera os contatos de emergência salvos (se houver)
   static Future<List<Contact>> getEmergencyContacts() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedData = prefs.getString(_storageKey);
-      
-      if (savedData != null) {
-        final List<dynamic> jsonList = json.decode(savedData);
-        return jsonList.map((json) => Contact.fromJson(json)).toList();
-      }
-      
-      return [];
-    } catch (e) {
-      throw Exception('Erro ao carregar contatos: $e');
+    final prefs = await SharedPreferences.getInstance();
+    final savedData = prefs.getString(_storageKey);
+    if (savedData != null) {
+      final List jsonList = json.decode(savedData);
+      return jsonList.map((json) => Contact.fromJson(json)).toList();
     }
+    return [];
   }
 
-  // Salva contatos de emergência
+  /// Salva contatos de emergência localmente
   static Future<void> saveEmergencyContacts(List<Contact> contacts) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonList = contacts.map((c) => c.toJson()).toList();
-      await prefs.setString(_storageKey, json.encode(jsonList));
-    } catch (e) {
-      throw Exception('Erro ao salvar contatos: $e');
-    }
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = contacts.map((c) => c.toJson()).toList();
+    await prefs.setString(_storageKey, json.encode(jsonList));
   }
 
-  // Busca contatos do celular e converte para nosso modelo
+  /// Recupera contatos do dispositivo usando fast_contacts
   static Future<List<Contact>> getDeviceContacts() async {
-    try {
-      final permission = await Permission.contacts.request();
-      if (!permission.isGranted) {
-        throw Exception('Permissão negada');
+    // pedir permissão
+    var status = await Permission.contacts.status;
+    if (!status.isGranted) {
+      status = await Permission.contacts.request();
+      if (!status.isGranted) {
+        throw Exception('Permissão de contatos negada');
       }
-
-      // Agora usando ContactsLib.ContactsService (da biblioteca)
-      final deviceContacts = await ContactsLib.ContactsService.getContacts(withThumbnails: false);
-      
-      // Converte contatos do celular para nosso modelo Contact
-      return deviceContacts
-          .where((c) => 
-              c.phones?.isNotEmpty == true && 
-              c.displayName?.isNotEmpty == true)
-          .map((deviceContact) => Contact( // ← Este é SEU modelo
-                id: deviceContact.identifier ?? DateTime.now().millisecondsSinceEpoch.toString(),
-                name: deviceContact.displayName!,
-                phone: deviceContact.phones!.first.value ?? '',
-                imageUrl: '', // Sem foto por enquanto
-                priority: 0, // Será definido ao salvar
-              ))
-          .toList();
-    } catch (e) {
-      throw Exception('Erro ao carregar contatos do dispositivo: $e');
     }
+
+    // buscar contatos via fast_contacts
+    final fields = fc.ContactField.values.toList();
+    final fastContacts = await fc.FastContacts.getAllContacts(fields: fields);
+
+    // converter para o seu modelo Contact
+    return fastContacts.where((f) {
+      return f.phones.isNotEmpty && f.displayName.isNotEmpty;
+    }).map((f) {
+      return Contact(
+        id: f.id,
+        name: f.displayName,
+        phone: f.phones.isNotEmpty ? f.phones.first.number : '',
+        imageUrl: '', // opcional: pode usar fc.FastContacts.getContactImage(f.id)
+        priority: 0,
+      );
+    }).toList();
   }
 
-  // Remove um contato de emergência específico
+  /// Remove um contato da lista de emergência
   static Future<void> removeEmergencyContact(String contactId) async {
-    try {
-      final contacts = await getEmergencyContacts();
-      final updatedContacts = contacts.where((c) => c.id != contactId).toList();
-      await saveEmergencyContacts(updatedContacts);
-    } catch (e) {
-      throw Exception('Erro ao remover contato: $e');
-    }
+    final contacts = await getEmergencyContacts();
+    final updated = contacts.where((c) => c.id != contactId).toList();
+    await saveEmergencyContacts(updated);
   }
 
-  // Verifica se um número já é contato de emergência
+  /// Verifica se um número já está na lista de emergência
   static Future<bool> isEmergencyContact(String phone) async {
-    try {
-      final contacts = await getEmergencyContacts();
-      return contacts.any((c) => c.phone == phone);
-    } catch (e) {
-      return false;
-    }
+    final contacts = await getEmergencyContacts();
+    return contacts.any((c) => c.phone == phone);
   }
 }

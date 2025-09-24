@@ -285,10 +285,10 @@ import 'package:flutter/material.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
 import 'package:plenimind_app/schemas/contacts/contact.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ContactPage extends StatefulWidget {
   static const String routePath = '/contacts';
-  
   const ContactPage({super.key});
 
   @override
@@ -300,6 +300,8 @@ class _ContactPageState extends State<ContactPage> {
   List<Contact> _emergencyContacts = [];
   final Set<String> _selectedContactIds = {};
   bool _isLoading = true;
+  bool _permissionDenied = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -308,63 +310,72 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
       // Carrega contatos salvos como emergência
       final emergencyContacts = await ContactService.getEmergencyContacts();
-      
-      // Carrega contatos do celular
+
+      // Carrega contatos do celular (ContactService já pede permissão)
       final deviceContacts = await ContactService.getDeviceContacts();
-      
-      // Marca contatos que já são de emergência
+
       final emergencyPhones = emergencyContacts.map((c) => c.phone).toSet();
-      
+
       setState(() {
         _emergencyContacts = emergencyContacts;
         _deviceContacts = deviceContacts;
-        
-        // Seleciona os que já são de emergência
         _selectedContactIds.clear();
+
+        // Seleciona automaticamente os que são emergência
         for (final deviceContact in _deviceContacts) {
           if (emergencyPhones.contains(deviceContact.phone)) {
             _selectedContactIds.add(deviceContact.id);
           }
         }
+
+        _permissionDenied = false;
       });
     } catch (e) {
-      _showSnackBar('Erro: $e');
+      final msg = e.toString();
+      // Detecta permissão negada (mensagem do seu service usa "Permissão")
+      if (msg.toLowerCase().contains('permiss') || msg.toLowerCase().contains('negada')) {
+        setState(() {
+          _permissionDenied = true;
+          _deviceContacts = [];
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Erro ao carregar contatos: $e';
+        });
+        _showSnackBar('Erro: $e');
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _saveSelection() async {
     try {
-      // Pega os contatos selecionados
-      final selectedContacts = _deviceContacts
-          .where((contact) => _selectedContactIds.contains(contact.id))
-          .toList();
+      final selected = _deviceContacts.where((c) => _selectedContactIds.contains(c.id)).toList();
 
       // Atribui prioridades (1 = mais importante)
-      final contactsWithPriority = selectedContacts.asMap().entries.map((entry) {
+      final contactsWithPriority = selected.asMap().entries.map((entry) {
         final index = entry.key;
         final contact = entry.value;
-        
         return Contact(
           id: contact.id,
           name: contact.name,
           phone: contact.phone,
           imageUrl: contact.imageUrl,
-          priority: index + 1, // 1, 2, 3, 4, 5
+          priority: index + 1,
         );
       }).toList();
 
-      // Salva
       await ContactService.saveEmergencyContacts(contactsWithPriority);
       _showSnackBar('${contactsWithPriority.length} contatos de emergência salvos!');
-      
-      // Recarrega para mostrar atualizações
       await _loadData();
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e');
@@ -386,11 +397,46 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   void _showSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Widget _buildPermissionDenied() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lock_person, size: 56, color: Colors.grey),
+            const SizedBox(height: 12),
+            const Text('Permissão de contatos negada.'),
+            const SizedBox(height: 8),
+            Text(
+              'Ative a permissão em Configurações para permitir que o app leia seus contatos.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ElevatedButton(
+                  onPressed: () => openAppSettings(),
+                  child: const Text('Abrir configurações'),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton(
+                  onPressed: _loadData,
+                  child: const Text('Tentar novamente'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -400,7 +446,7 @@ class _ContactPageState extends State<ContactPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Contatos de Emergência'),
+            const Text('Contatos de Emergência'),
             Text(
               '${_selectedContactIds.length}/5 selecionados',
               style: Theme.of(context).textTheme.bodySmall,
@@ -409,96 +455,100 @@ class _ContactPageState extends State<ContactPage> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.save),
+            icon: const Icon(Icons.save),
             onPressed: _selectedContactIds.isNotEmpty ? _saveSelection : null,
             tooltip: 'Salvar contatos',
           ),
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Mostra contatos de emergência salvos (se houver)
-                if (_emergencyContacts.isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    color: Colors.green.shade50,
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+          ? const Center(child: CircularProgressIndicator())
+          : _permissionDenied
+              ? _buildPermissionDenied()
+              : Column(
+                  children: [
+                    if (_emergencyContacts.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        color: Colors.green.shade50,
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.emergency, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text(
-                              'Seus Contatos de Emergência:',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                            Row(
+                              children: const [
+                                Icon(Icons.emergency, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Seus Contatos de Emergência:',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 8),
+                            ..._emergencyContacts.map((contact) {
+                              return ContactItem(
+                                contact: contact,
+                                isSelected: true,
+                                onChanged: (value) {},
+                                isDisabled: true,
+                                showPriority: true,
+                              );
+                            }).toList(),
                           ],
                         ),
-                        SizedBox(height: 8),
-                        ..._emergencyContacts.map((contact) => ContactItem(
-                              contact: contact,
-                              isSelected: true,
-                              onChanged: (value) {}, // Só exibição
-                              isDisabled: true,
-                              showPriority: true,
-                            )),
-                      ],
-                    ),
-                  ),
-                  Divider(height: 1),
-                ],
-                
-                // Título da seção de seleção
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(Icons.contacts),
-                      SizedBox(width: 8),
-                      Text(
-                        'Escolha contatos do seu celular:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
                       ),
+                      const Divider(height: 1),
                     ],
-                  ),
-                ),
-                
-                // Lista de contatos do celular
-                Expanded(
-                  child: _deviceContacts.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.contacts, size: 64, color: Colors.grey),
-                              Text('Nenhum contato encontrado'),
-                              TextButton(
-                                onPressed: _loadData,
-                                child: Text('Tentar novamente'),
-                              ),
-                            ],
+
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.contacts),
+                          SizedBox(width: 8),
+                          Text(
+                            'Escolha contatos do seu celular:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        )
-                      : ListView.builder(
-                          itemCount: _deviceContacts.length,
-                          itemBuilder: (context, index) {
-                            final contact = _deviceContacts[index];
-                            final isSelected = _selectedContactIds.contains(contact.id);
-                            
-                            return ContactItem(
-                              contact: contact,
-                              isSelected: isSelected,
-                              onChanged: (selected) => _toggleContact(contact.id, selected),
-                            );
-                          },
-                        ),
+                        ],
+                      ),
+                    ),
+
+                    Expanded(
+                      child: _deviceContacts.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.contacts, size: 64, color: Colors.grey),
+                                  const SizedBox(height: 8),
+                                  const Text('Nenhum contato encontrado'),
+                                  TextButton(
+                                    onPressed: _loadData,
+                                    child: const Text('Tentar novamente'),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: _deviceContacts.length,
+                              itemBuilder: (context, index) {
+                                final contact = _deviceContacts[index];
+                                final isSelected = _selectedContactIds.contains(contact.id);
+
+                                return ContactItem(
+                                  contact: contact,
+                                  isSelected: isSelected,
+                                  onChanged: (selected) => _toggleContact(contact.id, selected),
+                                  // opcional: desabilitar seleção quando estiver cheio
+                                  isDisabled: !isSelected && _selectedContactIds.length >= 5,
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
     );
   }
 }
