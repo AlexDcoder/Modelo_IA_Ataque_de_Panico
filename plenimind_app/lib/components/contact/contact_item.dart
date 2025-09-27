@@ -38,10 +38,10 @@
 
 
 import 'package:flutter/material.dart';
-import 'package:plenimind_app/schemas/contacts/contact.dart';
+import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 
 class ContactItem extends StatelessWidget {
-  final Contact contact;
+  final EmergencyContact contact;
   final bool isSelected;
   final ValueChanged<bool?> onChanged;
   final bool isDisabled;

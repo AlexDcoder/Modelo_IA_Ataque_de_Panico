@@ -110,14 +110,14 @@
 // }
 
 
-class Contact {
+class EmergencyContact {
   final String id;
   final String name;
   final String phone;
   final String imageUrl;
   final int priority;
 
-  Contact({
+  EmergencyContact({
     required this.id,
     required this.name,
     required this.phone,
@@ -133,7 +133,7 @@ class Contact {
         'priority': priority,
       };
 
-  factory Contact.fromJson(Map<String, dynamic> j) => Contact(
+  factory EmergencyContact.fromJson(Map<String, dynamic> j) => EmergencyContact(
         id: j['id'],
         name: j['name'],
         phone: j['phone'],

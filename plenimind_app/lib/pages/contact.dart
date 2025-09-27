@@ -284,7 +284,7 @@
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
-import 'package:plenimind_app/schemas/contacts/contact.dart';
+import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class ContactPage extends StatefulWidget {
@@ -296,8 +296,8 @@ class ContactPage extends StatefulWidget {
 }
 
 class _ContactPageState extends State<ContactPage> {
-  List<Contact> _deviceContacts = [];
-  List<Contact> _emergencyContacts = [];
+  List<EmergencyContact> _deviceContacts = [];
+  List<EmergencyContact> _emergencyContacts = [];
   final Set<String> _selectedContactIds = {};
   bool _isLoading = true;
   bool _permissionDenied = false;
@@ -365,7 +365,7 @@ class _ContactPageState extends State<ContactPage> {
       final contactsWithPriority = selected.asMap().entries.map((entry) {
         final index = entry.key;
         final contact = entry.value;
-        return Contact(
+        return EmergencyContact(
           id: contact.id,
           name: contact.name,
           phone: contact.phone,
