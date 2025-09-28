@@ -5,8 +5,6 @@ import 'package:plenimind_app/pages/profile.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
-
-  static String routeName = 'login';
   static String routePath = '/login';
 
   @override

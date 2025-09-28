@@ -12,7 +12,7 @@ class LoginHeader extends StatelessWidget {
         width: double.infinity,
         height: 230,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.center,

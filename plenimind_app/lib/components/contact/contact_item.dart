@@ -1,42 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:plenimind_app/schemas/contacts/contact.dart';
-
-// class ContactItem extends StatelessWidget {
-//   final Contact contact;
-//   final bool isSelected;
-//   final ValueChanged<bool?> onChanged;
-//   final bool isDisabled;
-
-//   const ContactItem({
-//     super.key,
-//     required this.contact,
-//     required this.isSelected,
-//     required this.onChanged,
-//     this.isDisabled = false,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return ListTile(
-//       leading: CircleAvatar(backgroundImage: NetworkImage(contact.imageUrl)),
-//       title: Text(
-//         contact.name,
-//         style: TextStyle(color: isDisabled ? Colors.grey : Colors.black),
-//       ),
-//       subtitle: Text(
-//         contact.phone,
-//         style: TextStyle(color: isDisabled ? Colors.grey : Colors.blue),
-//       ),
-//       trailing: Checkbox(
-//         value: isSelected,
-//         onChanged: isDisabled ? null : onChanged,
-//       ),
-//       enabled: !isDisabled,
-//     );
-//   }
-// }
-
-
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 
@@ -61,18 +22,27 @@ class ContactItem extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: isSelected ? Colors.green : Colors.blue,
-        child: contact.imageUrl.isNotEmpty
-            ? ClipOval(child: Image.network(contact.imageUrl, fit: BoxFit.cover))
-            : Text(
-                contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
+        child:
+            contact.imageUrl.isNotEmpty
+                ? ClipOval(
+                  child: Image.network(contact.imageUrl, fit: BoxFit.cover),
+                )
+                : Text(
+                  contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
       ),
       title: Text(
         contact.name,
         style: TextStyle(
           color: isDisabled ? Colors.grey : Colors.black,
-          fontWeight: showPriority && contact.priority > 0 ? FontWeight.bold : FontWeight.normal,
+          fontWeight:
+              showPriority && contact.priority > 0
+                  ? FontWeight.bold
+                  : FontWeight.normal,
         ),
       ),
       subtitle: Column(
@@ -99,8 +69,7 @@ class ContactItem extends StatelessWidget {
       ),
       enabled: !isDisabled,
       selected: isSelected,
-      selectedTileColor: Colors.green.withOpacity(0.1),
+      selectedTileColor: Colors.green.withValues(alpha: 0.1),
     );
   }
 }
-

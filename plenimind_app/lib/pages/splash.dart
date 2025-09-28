@@ -6,7 +6,6 @@ import 'package:plenimind_app/pages/login.dart';
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
-  static String routeName = 'splash';
   static String routePath = '/splash';
 
   @override

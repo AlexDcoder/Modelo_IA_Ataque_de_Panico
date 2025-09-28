@@ -7,8 +7,6 @@ import '../components/profile/profile_app_bar.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
-
-  static String routeName = 'CreateProfile';
   static String routePath = '/createProfile';
 
   @override
