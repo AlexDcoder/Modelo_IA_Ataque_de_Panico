@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:plenimind_app/pages/call.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
@@ -26,6 +27,15 @@ class _ContactPageState extends State<ContactPage> {
   void initState() {
     super.initState();
     _loadData();
+    _checkTermsStatus();
+  }
+
+  Future<void> _checkTermsStatus() async {
+    // Verifica se já existem contatos salvos (indica que termos foram aceitos)
+    final emergencyContacts = await ContactService.getEmergencyContacts();
+    setState(() {
+      _termsAccepted = emergencyContacts.isNotEmpty;
+    });
   }
 
   Future<void> _loadData() async {
@@ -56,8 +66,6 @@ class _ContactPageState extends State<ContactPage> {
         }
 
         _permissionDenied = false;
-        // Se já tem contatos de emergência, considera que os termos já foram aceitos
-        _termsAccepted = emergencyContacts.isNotEmpty;
       });
     } catch (e) {
       final msg = e.toString();
@@ -85,7 +93,7 @@ class _ContactPageState extends State<ContactPage> {
       MaterialPageRoute(builder: (context) => TermsConditionsScreen()),
     );
 
-    // Se os termos foram aceitos, salva a seleção
+    // Se os termos foram aceitos, atualiza o estado e salva a seleção
     if (result == true) {
       setState(() {
         _termsAccepted = true;
@@ -95,11 +103,24 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Future<void> _saveSelection() async {
+    // Verifica se os termos foram aceitos antes de salvar
+    if (!_termsAccepted) {
+      _showSnackBar('Aceite os termos e condições primeiro');
+      await _navigateToTerms();
+      return;
+    }
+
     try {
       final selected =
           _deviceContacts
               .where((c) => _selectedContactIds.contains(c.id))
               .toList();
+
+      // Verifica se há contatos selecionados
+      if (selected.isEmpty) {
+        _showSnackBar('Selecione pelo menos um contato');
+        return;
+      }
 
       // Atribui prioridades (1 = mais importante)
       final contactsWithPriority =
@@ -119,7 +140,11 @@ class _ContactPageState extends State<ContactPage> {
       _showSnackBar(
         '${contactsWithPriority.length} contatos de emergência salvos!',
       );
-      await _loadData();
+
+      // Navega para a CallPage após salvar com sucesso
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, CallPage.routePath);
+      }
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e');
     }
@@ -159,7 +184,7 @@ class _ContactPageState extends State<ContactPage> {
             Icon(
               Icons.lock_person,
               size: 56,
-              color: colorScheme.onSurface.withValues(alpha: .6),
+              color: colorScheme.onSurface.withOpacity(0.6),
             ),
             const SizedBox(height: 12),
             Text(
@@ -174,9 +199,7 @@ class _ContactPageState extends State<ContactPage> {
             Text(
               'Ative a permissão em Configurações para permitir que o app leia seus contatos.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
+              style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
             ),
             const SizedBox(height: 16),
             Row(
@@ -225,7 +248,7 @@ class _ContactPageState extends State<ContactPage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                color: colorScheme.onSurface.withOpacity(0.7),
                 height: 1.4,
               ),
             ),
@@ -265,15 +288,10 @@ class _ContactPageState extends State<ContactPage> {
           IconButton(
             icon: const Icon(Icons.save),
             onPressed:
-                _selectedContactIds.isNotEmpty && _termsAccepted
-                    ? _saveSelection
-                    : _selectedContactIds.isNotEmpty
-                    ? _navigateToTerms
+                _selectedContactIds.isNotEmpty
+                    ? _saveSelection // Agora _saveSelection verifica os termos internamente
                     : null,
-            tooltip:
-                _termsAccepted
-                    ? 'Salvar contatos'
-                    : 'Aceitar termos para salvar',
+            tooltip: 'Salvar contatos',
           ),
         ],
       ),
@@ -287,9 +305,7 @@ class _ContactPageState extends State<ContactPage> {
                   if (_emergencyContacts.isNotEmpty) ...[
                     Container(
                       width: double.infinity,
-                      color: colorScheme.primaryContainer.withValues(
-                        alpha: 0.3,
-                      ),
+                      color: colorScheme.primaryContainer.withOpacity(0.3),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,8 +370,8 @@ class _ContactPageState extends State<ContactPage> {
                                     Icon(
                                       Icons.contacts,
                                       size: 64,
-                                      color: colorScheme.onSurface.withValues(
-                                        alpha: 0.6,
+                                      color: colorScheme.onSurface.withOpacity(
+                                        0.6,
                                       ),
                                     ),
                                     const SizedBox(height: 8),
@@ -387,7 +403,6 @@ class _ContactPageState extends State<ContactPage> {
                                           contact.id,
                                           selected,
                                         ),
-                                    // opcional: desabilitar seleção quando estiver cheio
                                     isDisabled:
                                         !isSelected &&
                                         _selectedContactIds.length >= 5,

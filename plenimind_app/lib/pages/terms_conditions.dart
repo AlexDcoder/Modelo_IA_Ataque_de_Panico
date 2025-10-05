@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:plenimind_app/pages/contact.dart';
 import 'package:plenimind_app/components/terms_conditions/acceptance.dart';
 import 'package:plenimind_app/components/terms_conditions/content.dart';
 import 'package:plenimind_app/components/terms_conditions/continue_button.dart';
@@ -25,8 +24,8 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
   }
 
   void _onContinuePressed() {
-    // Navega para a página de contatos usando o mesmo padrão
-    Navigator.pushNamed(context, ContactPage.routePath);
+    // Retorna true indicando que os termos foram aceitos
+    Navigator.of(context).pop(true);
   }
 
   @override
