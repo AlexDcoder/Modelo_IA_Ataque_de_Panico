@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/pages/profile.dart';
 import 'package:plenimind_app/pages/splash.dart';
-import 'package:plenimind_app/pages/contact.dart'; // aqui está ContactPage
+import 'package:plenimind_app/pages/contact.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
 import 'package:plenimind_app/theme/colors_pallet.dart';
-import 'package:plenimind_app/pages/call.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +36,6 @@ class MyApp extends StatelessWidget {
         LoginPage.routePath: (context) => const LoginPage(),
         ProfilePage.routePath: (context) => const ProfilePage(),
         ContactPage.routePath: (context) => const ContactPage(),
-        CallPage.routePath: (context) => const CallPage(),
         TermsConditionsScreen.routePath:
             (context) => const TermsConditionsScreen(),
       },

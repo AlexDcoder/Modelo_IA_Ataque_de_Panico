@@ -8,12 +8,16 @@ import 'package:fast_contacts/fast_contacts.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 
 class ContactService {
-  static const String _storageKey = 'user_emergency_contacts';
+  // static const String _storageKey = 'user_emergency_contacts';
+
+  static String _getStorageKey(String userId) {
+    return 'user_${userId}_emergency_contacts';
+  }
 
   /// Recupera os contatos de emergência salvos (se houver)
-  static Future<List<EmergencyContact>> getEmergencyContacts() async {
+  static Future<List<EmergencyContact>> getEmergencyContacts(String userId) async {
     final prefs = await SharedPreferences.getInstance();
-    final savedData = prefs.getString(_storageKey);
+    final savedData = prefs.getString(_getStorageKey(userId));
     if (savedData != null) {
       final List jsonList = json.decode(savedData);
       return jsonList.map((json) => EmergencyContact.fromJson(json)).toList();
@@ -22,10 +26,10 @@ class ContactService {
   }
 
   /// Salva contatos de emergência localmente
-  static Future<void> saveEmergencyContacts(List<EmergencyContact> contacts) async {
+  static Future<void> saveEmergencyContacts(List<EmergencyContact> contacts, String userId) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = contacts.map((c) => c.toJson()).toList();
-    await prefs.setString(_storageKey, json.encode(jsonList));
+    await prefs.setString(_getStorageKey(userId), json.encode(jsonList));
   }
 
   /// Recupera contatos do dispositivo usando fast_contacts
@@ -58,15 +62,15 @@ class ContactService {
   }
 
   /// Remove um contato da lista de emergência
-  static Future<void> removeEmergencyContact(String contactId) async {
-    final contacts = await getEmergencyContacts();
+  static Future<void> removeEmergencyContact(String contactId, String userId) async {
+    final contacts = await getEmergencyContacts(userId);
     final updated = contacts.where((c) => c.id != contactId).toList();
-    await saveEmergencyContacts(updated);
+    await saveEmergencyContacts(updated, userId);
   }
 
   /// Verifica se um número já está na lista de emergência
-  static Future<bool> isEmergencyContact(String phone) async {
-    final contacts = await getEmergencyContacts();
+  static Future<bool> isEmergencyContact(String phone, String userId) async {
+    final contacts = await getEmergencyContacts(userId);
     return contacts.any((c) => c.phone == phone);
   }
 }

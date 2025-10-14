@@ -5,6 +5,7 @@ import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ContactPage extends StatefulWidget {
   static const String routePath = '/contacts';
@@ -22,17 +23,30 @@ class _ContactPageState extends State<ContactPage> {
   bool _permissionDenied = false;
   bool _termsAccepted = false;
   String? _errorMessage;
+  String _userId = ""; 
 
   @override
   void initState() {
     super.initState();
+    _initUser();
     _loadData();
     _checkTermsStatus();
   }
 
+  Future<void> _initUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      setState(() {
+      _userId = user.uid;
+    });
+    } else {
+      _showSnackBar('Erro: usuário não autenticado.');
+    }
+  }
+
   Future<void> _checkTermsStatus() async {
     // Verifica se já existem contatos salvos (indica que termos foram aceitos)
-    final emergencyContacts = await ContactService.getEmergencyContacts();
+    final emergencyContacts = await ContactService.getEmergencyContacts(_userId);
     setState(() {
       _termsAccepted = emergencyContacts.isNotEmpty;
     });
@@ -46,7 +60,7 @@ class _ContactPageState extends State<ContactPage> {
 
     try {
       // Carrega contatos salvos como emergência
-      final emergencyContacts = await ContactService.getEmergencyContacts();
+      final emergencyContacts = await ContactService.getEmergencyContacts(_userId);
 
       // Carrega contatos do celular (ContactService já pede permissão)
       final deviceContacts = await ContactService.getDeviceContacts();
@@ -136,14 +150,14 @@ class _ContactPageState extends State<ContactPage> {
             );
           }).toList();
 
-      await ContactService.saveEmergencyContacts(contactsWithPriority);
+      await ContactService.saveEmergencyContacts(contactsWithPriority, _userId);
       _showSnackBar(
         '${contactsWithPriority.length} contatos de emergência salvos!',
       );
 
       // Navega para a CallPage após salvar com sucesso
       if (mounted) {
-        Navigator.pushReplacementNamed(context, CallPage.routePath);
+        // Navigator.pushReplacementNamed(context, CallPage.routePath); aqui tem q levar pra pagina de visualização dos dados coletados e predição da ia
       }
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e');
