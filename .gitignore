@@ -196,3 +196,6 @@ local.properties
 .packages
 .pub-cache/
 .pub/
+
+android/key.properties
+*.jks
