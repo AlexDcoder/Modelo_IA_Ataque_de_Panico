@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:plenimind_app/pages/call.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
@@ -23,7 +22,7 @@ class _ContactPageState extends State<ContactPage> {
   bool _permissionDenied = false;
   bool _termsAccepted = false;
   String? _errorMessage;
-  String _userId = ""; 
+  String _userId = "";
 
   @override
   void initState() {
@@ -37,8 +36,8 @@ class _ContactPageState extends State<ContactPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       setState(() {
-      _userId = user.uid;
-    });
+        _userId = user.uid;
+      });
     } else {
       _showSnackBar('Erro: usuário não autenticado.');
     }
@@ -46,7 +45,9 @@ class _ContactPageState extends State<ContactPage> {
 
   Future<void> _checkTermsStatus() async {
     // Verifica se já existem contatos salvos (indica que termos foram aceitos)
-    final emergencyContacts = await ContactService.getEmergencyContacts(_userId);
+    final emergencyContacts = await ContactService.getEmergencyContacts(
+      _userId,
+    );
     setState(() {
       _termsAccepted = emergencyContacts.isNotEmpty;
     });
@@ -60,7 +61,9 @@ class _ContactPageState extends State<ContactPage> {
 
     try {
       // Carrega contatos salvos como emergência
-      final emergencyContacts = await ContactService.getEmergencyContacts(_userId);
+      final emergencyContacts = await ContactService.getEmergencyContacts(
+        _userId,
+      );
 
       // Carrega contatos do celular (ContactService já pede permissão)
       final deviceContacts = await ContactService.getDeviceContacts();
