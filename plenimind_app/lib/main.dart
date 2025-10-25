@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/pages/profile.dart';
 import 'package:plenimind_app/pages/splash.dart';
-import 'package:plenimind_app/pages/contact.dart'; // aqui está ContactPage
+import 'package:plenimind_app/pages/contact.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
 import 'package:plenimind_app/theme/colors_pallet.dart';
 
