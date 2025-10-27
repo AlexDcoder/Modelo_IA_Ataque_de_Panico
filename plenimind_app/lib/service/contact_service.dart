@@ -1,21 +1,18 @@
-// lib/services/contact_service.dart
-
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:fast_contacts/fast_contacts.dart';
-
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 
 class ContactService {
-  // static const String _storageKey = 'user_emergency_contacts';
-
   static String _getStorageKey(String userId) {
     return 'user_${userId}_emergency_contacts';
   }
 
   /// Recupera os contatos de emergência salvos (se houver)
-  static Future<List<EmergencyContact>> getEmergencyContacts(String userId) async {
+  static Future<List<EmergencyContact>> getEmergencyContacts(
+    String userId,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final savedData = prefs.getString(_getStorageKey(userId));
     if (savedData != null) {
@@ -26,7 +23,10 @@ class ContactService {
   }
 
   /// Salva contatos de emergência localmente
-  static Future<void> saveEmergencyContacts(List<EmergencyContact> contacts, String userId) async {
+  static Future<void> saveEmergencyContacts(
+    List<EmergencyContact> contacts,
+    String userId,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = contacts.map((c) => c.toJson()).toList();
     await prefs.setString(_getStorageKey(userId), json.encode(jsonList));
@@ -34,7 +34,6 @@ class ContactService {
 
   /// Recupera contatos do dispositivo usando fast_contacts
   static Future<List<EmergencyContact>> getDeviceContacts() async {
-    // pedir permissão
     var status = await Permission.contacts.status;
     if (!status.isGranted) {
       status = await Permission.contacts.request();
@@ -43,26 +42,30 @@ class ContactService {
       }
     }
 
-    // buscar contatos via fast_contacts
     final fields = ContactField.values.toList();
     final fastContacts = await FastContacts.getAllContacts(fields: fields);
 
-    // converter para o seu modelo Contact
-    return fastContacts.where((f) {
-      return f.phones.isNotEmpty && f.displayName.isNotEmpty;
-    }).map((f) {
-      return EmergencyContact(
-        id: f.id,
-        name: f.displayName,
-        phone: f.phones.isNotEmpty ? f.phones.first.number : '',
-        imageUrl: '', // opcional: pode usar fc.FastContacts.getContactImage(f.id)
-        priority: 0,
-      );
-    }).toList();
+    return fastContacts
+        .where((f) {
+          return f.phones.isNotEmpty && f.displayName.isNotEmpty;
+        })
+        .map((f) {
+          return EmergencyContact(
+            id: f.id,
+            name: f.displayName,
+            phone: f.phones.isNotEmpty ? f.phones.first.number : '',
+            imageUrl: '',
+            priority: 0,
+          );
+        })
+        .toList();
   }
 
   /// Remove um contato da lista de emergência
-  static Future<void> removeEmergencyContact(String contactId, String userId) async {
+  static Future<void> removeEmergencyContact(
+    String contactId,
+    String userId,
+  ) async {
     final contacts = await getEmergencyContacts(userId);
     final updated = contacts.where((c) => c.id != contactId).toList();
     await saveEmergencyContacts(updated, userId);

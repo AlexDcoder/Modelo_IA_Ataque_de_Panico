@@ -24,7 +24,6 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
   }
 
   void _onContinuePressed() {
-    // Retorna true indicando que os termos foram aceitos
     Navigator.of(context).pop(true);
   }
 

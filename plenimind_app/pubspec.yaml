@@ -11,12 +11,11 @@ dependencies:
     sdk: flutter
   fast_contacts: ^4.0.0
   shared_preferences: ^2.2.2
+  firebase_auth: ^6.1.1
 
   flutter_phone_direct_caller: ^2.2.1
 
   flutter_phone_call_state: 0.1.0
-
-  firebase_auth: ^6.1.0
 
   flutter_blue_plus: ^1.5.10
   permission_handler: ^12.0.1

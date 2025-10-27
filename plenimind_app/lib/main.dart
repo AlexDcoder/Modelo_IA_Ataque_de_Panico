@@ -4,6 +4,7 @@ import 'package:plenimind_app/pages/profile.dart';
 import 'package:plenimind_app/pages/splash.dart';
 import 'package:plenimind_app/pages/contact.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
+import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/theme/colors_pallet.dart';
 
 void main() {
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         ContactPage.routePath: (context) => const ContactPage(),
         TermsConditionsScreen.routePath:
             (context) => const TermsConditionsScreen(),
+        StatusPage.routePath: (context) => const StatusPage(),
       },
     );
   }

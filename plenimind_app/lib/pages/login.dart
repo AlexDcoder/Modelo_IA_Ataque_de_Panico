@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:plenimind_app/components/login/animated_login_card.dart';
 import 'package:plenimind_app/components/login/login_header.dart';
 import 'package:plenimind_app/pages/profile.dart';
+import 'package:plenimind_app/pages/status_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -60,19 +61,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() => _isSignUpLoading = true);
 
     try {
-      // final apiClient = ApiClient();
-      // final response = await apiClient.post('signup', {
-      //   'email': _emailCreateController.text,
-      //   'password': _passwordCreateController.text,
-      // });
-      //response.statusCode == 200
-      if (1 == 1) {
-        _showSnackBar('Account created successfully!');
-        // Navigate to profile creation or main app
-        Navigator.pushReplacementNamed(context, ProfilePage.routePath);
-      } else {
-        //_showSnackBar('Sign up failed: ${response.body}');
-      }
+      // TODO: Integrar com Firebase Auth ou API real
+      await Future.delayed(const Duration(seconds: 1));
+
+      _showSnackBar('Account created successfully!');
+
+      // FLUXO 1: Sign Up -> ProfilePage
+      Navigator.pushReplacementNamed(context, ProfilePage.routePath);
     } catch (e) {
       _showSnackBar('Sign up failed: ${e.toString()}');
     } finally {
@@ -89,19 +84,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() => _isSignInLoading = true);
 
     try {
-      // final apiClient = ApiClient();
-      // final response = await apiClient.post('signin', {
-      //   'email': _emailController.text,
-      //   'password': _passwordController.text,
-      // });
+      // TODO: Integrar com Firebase Auth ou API real
+      await Future.delayed(const Duration(seconds: 1));
 
-      if (1 == 1) {
-        _showSnackBar('Signed in successfully!');
-        // Navigate to main app
-        // Navigator.pushReplacementNamed(context, '/stats');
-      } else {
-        _showSnackBar('Sign in failed');
-      }
+      _showSnackBar('Signed in successfully!');
+
+      // FLUXO 2: Login -> StatusPage
+      Navigator.pushReplacementNamed(context, StatusPage.routePath);
     } catch (e) {
       _showSnackBar('Sign in failed: ${e.toString()}');
     } finally {

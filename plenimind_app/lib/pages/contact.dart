@@ -1,10 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:plenimind_app/pages/status_page.dart';
 
 class ContactPage extends StatefulWidget {
   static const String routePath = '/contacts';
@@ -27,7 +28,6 @@ class _ContactPageState extends State<ContactPage> {
   @override
   void initState() {
     super.initState();
-    _initUser();
     _loadData();
     _checkTermsStatus();
   }
@@ -75,7 +75,6 @@ class _ContactPageState extends State<ContactPage> {
         _deviceContacts = deviceContacts;
         _selectedContactIds.clear();
 
-        // Seleciona automaticamente os que são emergência
         for (final deviceContact in _deviceContacts) {
           if (emergencyPhones.contains(deviceContact.phone)) {
             _selectedContactIds.add(deviceContact.id);
@@ -86,7 +85,6 @@ class _ContactPageState extends State<ContactPage> {
       });
     } catch (e) {
       final msg = e.toString();
-      // Detecta permissão negada (mensagem do seu service usa "Permissão")
       if (msg.toLowerCase().contains('permiss') ||
           msg.toLowerCase().contains('negada')) {
         setState(() {
@@ -110,7 +108,6 @@ class _ContactPageState extends State<ContactPage> {
       MaterialPageRoute(builder: (context) => TermsConditionsScreen()),
     );
 
-    // Se os termos foram aceitos, atualiza o estado e salva a seleção
     if (result == true) {
       setState(() {
         _termsAccepted = true;
@@ -120,7 +117,6 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Future<void> _saveSelection() async {
-    // Verifica se os termos foram aceitos antes de salvar
     if (!_termsAccepted) {
       _showSnackBar('Aceite os termos e condições primeiro');
       await _navigateToTerms();
@@ -133,13 +129,11 @@ class _ContactPageState extends State<ContactPage> {
               .where((c) => _selectedContactIds.contains(c.id))
               .toList();
 
-      // Verifica se há contatos selecionados
       if (selected.isEmpty) {
         _showSnackBar('Selecione pelo menos um contato');
         return;
       }
 
-      // Atribui prioridades (1 = mais importante)
       final contactsWithPriority =
           selected.asMap().entries.map((entry) {
             final index = entry.key;
@@ -158,9 +152,9 @@ class _ContactPageState extends State<ContactPage> {
         '${contactsWithPriority.length} contatos de emergência salvos!',
       );
 
-      // Navega para a CallPage após salvar com sucesso
+      // FLUXO 1: ContactPage -> StatusPage
       if (mounted) {
-        // Navigator.pushReplacementNamed(context, CallPage.routePath); aqui tem q levar pra pagina de visualização dos dados coletados e predição da ia
+        Navigator.pushReplacementNamed(context, StatusPage.routePath);
       }
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e');
@@ -304,10 +298,7 @@ class _ContactPageState extends State<ContactPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
-            onPressed:
-                _selectedContactIds.isNotEmpty
-                    ? _saveSelection // Agora _saveSelection verifica os termos internamente
-                    : null,
+            onPressed: _selectedContactIds.isNotEmpty ? _saveSelection : null,
             tooltip: 'Salvar contatos',
           ),
         ],
@@ -356,7 +347,6 @@ class _ContactPageState extends State<ContactPage> {
                     const Divider(height: 1),
                   ],
 
-                  // Se tem contatos selecionados mas não aceitou os termos, mostra prompt
                   if (_selectedContactIds.isNotEmpty && !_termsAccepted) ...[
                     Expanded(child: _buildTermsPrompt()),
                   ] else ...[
