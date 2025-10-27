@@ -6,17 +6,10 @@ from core.security.password import verify_password
 from core.schemas.dto.user_dto import UserLoginDTO
 from core.schemas.auth import Token, RefreshTokenRequest
 from core.logger import get_logger
+from core.dependencies import get_db_service
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["authentication"])
-
-def get_db_service() -> DBService:
-    try:
-        connector = RTDBConnector()
-        return DBService(connector)
-    except Exception as e:
-        logger.error(f"Error connecting to Firebase: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error connecting to Firebase")
 
 @router.post("/login", response_model=Token)
 async def login(

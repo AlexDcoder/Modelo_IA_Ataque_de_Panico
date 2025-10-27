@@ -1,22 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from core.services.db_service import DBService
-from core.db.connector import RTDBConnector
 from core.logger import get_logger
 from core.schemas.dto.user_dto import UserCreateDTO, UserResponseDTO, UserUpdateDTO, UserPublicDTO
-from core.security.password import hash_password, verify_password
+from core.security.password import hash_password
 from core.security.auth_middleware import get_current_user
 from datetime import datetime
+from core.dependencies import get_db_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix='', tags=['users'])
-
-def get_db_service() -> DBService:
-    try:
-        connector = RTDBConnector()
-        return DBService(connector)
-    except Exception as e:
-        logger.error(f"Error connecting to Firebase: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error connecting to Firebase")
 
 @router.get("/", response_model=dict)
 async def get_all_users(
