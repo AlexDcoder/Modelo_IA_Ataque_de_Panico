@@ -3,6 +3,7 @@ import 'package:plenimind_app/components/login/animated_login_card.dart';
 import 'package:plenimind_app/components/login/login_header.dart';
 import 'package:plenimind_app/pages/profile.dart';
 import 'package:plenimind_app/pages/status_page.dart';
+import 'package:plenimind_app/core/auth/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,6 +31,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   bool _isSignUpLoading = false;
   bool _isSignInLoading = false;
+
+  final _authService = AuthService();
 
   @override
   void initState() {
@@ -84,13 +87,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() => _isSignInLoading = true);
 
     try {
-      // TODO: Integrar com Firebase Auth ou API real
-      await Future.delayed(const Duration(seconds: 1));
+      final success = await _authService.login(
+        _emailController.text,
+        _passwordController.text,
+      );
 
-      _showSnackBar('Signed in successfully!');
-
-      // FLUXO 2: Login -> StatusPage
-      Navigator.pushReplacementNamed(context, StatusPage.routePath);
+      if (success) {
+        _showSnackBar('Signed in successfully!');
+        Navigator.pushReplacementNamed(context, StatusPage.routePath);
+      }
     } catch (e) {
       _showSnackBar('Sign in failed: ${e.toString()}');
     } finally {

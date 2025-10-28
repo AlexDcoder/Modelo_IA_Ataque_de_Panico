@@ -6,6 +6,7 @@ import 'package:plenimind_app/components/contact/contact_item.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:plenimind_app/pages/status_page.dart';
+import 'package:plenimind_app/core/auth/auth_service.dart';
 
 class ContactPage extends StatefulWidget {
   static const String routePath = '/contacts';
@@ -30,18 +31,22 @@ class _ContactPageState extends State<ContactPage> {
     super.initState();
     _loadData();
     _checkTermsStatus();
+    _initUser();
   }
 
   Future<void> _initUser() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final authService = AuthService();
+    final user = await authService.getCurrentUser();
+
     if (user != null) {
       setState(() {
-        _userId = user.uid;
+        _userId = user["uid"]; 
       });
     } else {
-      _showSnackBar('Erro: usuário não autenticado.');
+      _showSnackBar("Erro ao obter dados do usuário.");
     }
   }
+
 
   Future<void> _checkTermsStatus() async {
     // Verifica se já existem contatos salvos (indica que termos foram aceitos)
