@@ -11,7 +11,6 @@ class AIService:
         self._data = pd.read_csv(DATA_PATH)
         self._model = PanicDetectionModel(data=self._data)
         self._model.start_model()
-        logger.info("AI Service initialized")
     
     def predict(self, info: dict) -> bool:
         """Faz predição baseada apenas nos dados vitais, sem UID"""

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.logger import get_logger
 from core.routes import users, feedback, ai, vital, auth
 from contextlib import asynccontextmanager
-from core.dependencies import get_firebase_connector, get_db_service, get_ai_service
+from core.dependencies import get_db_service, get_ai_service
 
 logger = get_logger(__name__)
 
@@ -16,7 +16,6 @@ async def lifespan(app: FastAPI):
 
     try:
         logger.info("Initializing services")
-        connector = get_firebase_connector()
         db_service = get_db_service()
         ai_service = get_ai_service()
         logger.info("All services initialized")
