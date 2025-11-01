@@ -20,9 +20,3 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))
 
 DATA_PATH = str(BASE_DIR / "panic_attack_data_improved.csv")
-
-REQUIRED_VARS = ["DATABASE_URL", "CREDENTIAL_FIREBASE", "JWT_SECRET_KEY"]
-
-_missing = [v for v in REQUIRED_VARS if not globals().get(v)]
-if _missing:
-    raise RuntimeError(f"Variáveis obrigatórias ausentes no .env: {', '.join(_missing)}")

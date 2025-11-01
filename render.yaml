@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: plenimind-backend
+    env: python
+    plan: free
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        value: "SET_IN_RENDER_DASHBOARD"
+      - key: CREDENTIAL_FIREBASE
+        value: "SET_IN_RENDER_DASHBOARD"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: "HS256"
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: USER_PERSONAL_REF
+        value: "user_personal_data"
+      - key: USER_SENSOR_REF
+        value: "vital_data"

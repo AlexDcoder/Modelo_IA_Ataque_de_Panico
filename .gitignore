@@ -1,18 +1,47 @@
 # =========================
-# VSCode
+# Miscellaneous
 # =========================
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# =========================
+# IDE / Editor
+# =========================
+# IntelliJ / Android Studio / PyCharm
+*.iml
+*.ipr
+*.iws
+.idea/
+.gradle/
+local.properties
+
+# VSCode
 .vscode/
+
+# Spyder
+.spyderproject
+.spyproject
+
+# Rope
+.ropeproject
 
 # =========================
 # Python
 # =========================
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
 # Distribution / packaging
@@ -61,20 +90,19 @@ cover/
 *.mo
 *.pot
 
-# Django stuff:
-*.log
+# Django
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
 
-# Flask stuff:
+# Flask
 instance/
 .webassets-cache
 
-# Scrapy stuff:
+# Scrapy
 .scrapy
 
-# Sphinx documentation
+# Sphinx
 docs/_build/
 
 # PyBuilder
@@ -92,13 +120,13 @@ ipython_config.py
 # .python-version
 
 # pipenv
-#Pipfile.lock
+# Pipfile.lock
 
 # UV
-#uv.lock
+# uv.lock
 
 # poetry
-#poetry.lock
+# poetry.lock
 
 # pdm
 .pdm.toml
@@ -108,14 +136,14 @@ ipython_config.py
 # PEP 582
 __pypackages__/
 
-# Celery stuff
+# Celery
 celerybeat-schedule
 celerybeat.pid
 
-# SageMath parsed files
+# SageMath
 *.sage.py
 
-# Environments
+# Virtual environments
 .env
 .venv
 env/
@@ -124,43 +152,29 @@ ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
 # mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# Pyre type checker
+# Pyre
 .pyre/
 
-# pytype static type analyzer
+# pytype
 .pytype/
 
 # Cython debug symbols
 cython_debug/
 
-# PyCharm
-#.idea/
-
-# Ruff stuff:
+# Ruff
 .ruff_cache/
 
-# PyPI configuration file
+# PyPI configuration
 .pypirc
 
 # =========================
-# Flutter
+# Flutter / Dart
 # =========================
-
 # Build outputs
 build/
 .flutter-plugins
@@ -171,28 +185,8 @@ build/
 .dart_tool/
 .melody/
 
-# IntelliJ related
-*.iml
-.idea/
+# iOS / Flutter
+**/ios/Flutter/.last_build_id
 
-# VS Code related
-.vscode/
-
-# macOS
-.DS_Store
-
-# Android Studio
-*.iml
-.gradle/
-local.properties
-.idea/
-*.ipr
-*.iws
-
-# Flutter/Dart specific
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
-.pub/
+# Documentation
+**/doc/api/
