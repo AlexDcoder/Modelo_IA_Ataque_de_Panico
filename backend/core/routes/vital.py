@@ -1,22 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from core.services.db_service import DBService
-from core.db.connector import RTDBConnector
 from core.logger import get_logger
 from core.schemas.user import UserVitalData
 from core.schemas.dto.user_dto import VitalResponseDTO
 from core.security.auth_middleware import get_current_user
+from core.dependencies import get_db_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="", tags=["vitals"])
-
-def get_db_service() -> DBService:
-    try:
-        connector = RTDBConnector()
-        return DBService(connector)
-    except Exception as e:
-        logger.error(f"Error connecting to Firebase: {e}")
-        raise HTTPException(status_code=500, detail="Error connecting to Firebase")
-
 # Buscar todos os dados vitais (apenas para administradores)
 @router.get("/")
 async def get_all_vital_data(
