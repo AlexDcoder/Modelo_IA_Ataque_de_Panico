@@ -5,9 +5,15 @@ services:
     plan: free
     branch: main
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: PYTHONPATH
+        value: "/opt/render/project/src/backend"
       - key: DATABASE_URL
         value: "SET_IN_RENDER_DASHBOARD"
       - key: CREDENTIAL_FIREBASE
