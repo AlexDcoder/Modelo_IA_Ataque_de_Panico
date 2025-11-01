@@ -2,14 +2,9 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-from logging import getLogger
-
-logger = getLogger(__name__)
-
-logger.info("Carregando variáveis de ambiente...")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-ROOT_DIR = BASE_DIR.parent
+
 ENV_PATH = BASE_DIR / ".env"
 load_dotenv(ENV_PATH)
 
@@ -30,5 +25,4 @@ REQUIRED_VARS = ["DATABASE_URL", "CREDENTIAL_FIREBASE", "JWT_SECRET_KEY"]
 
 _missing = [v for v in REQUIRED_VARS if not globals().get(v)]
 if _missing:
-    logger.error(f"Variáveis obrigatórias ausentes no .env: {', '.join(_missing)}")
     raise RuntimeError(f"Variáveis obrigatórias ausentes no .env: {', '.join(_missing)}")

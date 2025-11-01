@@ -44,3 +44,7 @@ class DBService:
     def delete_vital(self, uid: str):
         logger.info(f"Deleting vital data for user {uid}")
         return self._connector.delete_data(f"{USER_SENSOR_REF}/{uid}")
+    
+    def close_connection(self):
+        logger.info("Closing database connection")
+        self._connector.close_connection()

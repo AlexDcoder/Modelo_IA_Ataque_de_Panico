@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from core.logger import get_logger
 from core.routes import users, feedback, ai, vital, auth
 from contextlib import asynccontextmanager
-from core.dependencies import get_firebase_connector, get_db_service, get_ai_service
+from core.dependencies import get_db_service, get_ai_service
 
 logger = get_logger(__name__)
 
@@ -16,7 +16,6 @@ async def lifespan(app: FastAPI):
 
     try:
         logger.info("Initializing services")
-        connector = get_firebase_connector()
         db_service = get_db_service()
         ai_service = get_ai_service()
         logger.info("All services initialized")
@@ -28,8 +27,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("Shutting down the application...")
     try:
-        connector = get_firebase_connector()
-        connector.close_connection()
+        db_service.close_connection()
         logger.info("Firebase connection closed")
     except Exception as e:
         logger.error(f"Error during shutdown: {e}")
