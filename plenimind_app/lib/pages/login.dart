@@ -4,6 +4,8 @@ import 'package:plenimind_app/components/login/login_header.dart';
 import 'package:plenimind_app/pages/profile.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/core/auth/auth_service.dart';
+import 'package:provider/provider.dart';
+import 'package:plenimind_app/core/auth/register_provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -63,19 +65,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
     setState(() => _isSignUpLoading = true);
 
-    try {
-      // TODO: Integrar com Firebase Auth ou API real
-      await Future.delayed(const Duration(seconds: 1));
+    final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
+    registerProvider.setEmailAndPassword(
+      _emailCreateController.text,
+      _passwordCreateController.text,
+    );
 
-      _showSnackBar('Account created successfully!');
-
-      // FLUXO 1: Sign Up -> ProfilePage
-      Navigator.pushReplacementNamed(context, ProfilePage.routePath);
-    } catch (e) {
-      _showSnackBar('Sign up failed: ${e.toString()}');
-    } finally {
-      setState(() => _isSignUpLoading = false);
-    }
+    Navigator.pushReplacementNamed(context, ProfilePage.routePath);
   }
 
   Future<void> _handleSignIn() async {

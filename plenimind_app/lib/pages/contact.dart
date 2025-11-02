@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
 import 'package:plenimind_app/service/contact_service.dart';
@@ -7,6 +6,9 @@ import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/core/auth/auth_service.dart';
+import 'package:provider/provider.dart';
+
+import 'package:plenimind_app/core/auth/register_provider.dart';
 
 class ContactPage extends StatefulWidget {
   static const String routePath = '/contacts';
@@ -151,16 +153,39 @@ class _ContactPageState extends State<ContactPage> {
               priority: index + 1,
             );
           }).toList();
-
+      
       await ContactService.saveEmergencyContacts(contactsWithPriority, _userId);
+
+
       _showSnackBar(
         '${contactsWithPriority.length} contatos de emergência salvos!',
       );
 
-      // FLUXO 1: ContactPage -> StatusPage
+      final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
+
+      final selectedAsMap = selected.map((c) => {
+        "name": c.name,
+        "phone": c.phone,
+      }).toList();
+
+      registerProvider.setEmergencyContacts(selectedAsMap);
+      
+      final registerData = registerProvider.data;
+      final authService = AuthService();
+
+      if (!registerData.isComplete()) {
+        _showSnackBar("Dados incompletos para finalizar o cadastro.");
+        return;
+      }
+
+      await authService.register(registerData);
+
+      _showSnackBar("Conta criada com sucesso!");
+      registerProvider.clear();
+
       if (mounted) {
         Navigator.pushReplacementNamed(context, StatusPage.routePath);
-      }
+      } 
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e');
     }

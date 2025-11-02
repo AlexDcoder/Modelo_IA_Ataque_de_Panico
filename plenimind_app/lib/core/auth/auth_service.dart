@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_manager.dart';
+import 'package:plenimind_app/core/auth/register_data.dart';
 
 class AuthService {
-  final String baseUrl = "localhost:8080//";
+  final String baseUrl = "https://modelo-ia-ataque-de-panico.onrender.com";
 
   Future<bool> login(String email, String password) async {
     final response = await http.post(
-      Uri.parse("$baseUrl/login"),
+      Uri.parse("$baseUrl/auth/login"),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({"email": email, "password": password}),
     );
@@ -27,7 +28,7 @@ class AuthService {
     if (token == null) return null;
 
     final response = await http.get(
-      Uri.parse("$baseUrl/me"),
+      Uri.parse("$baseUrl/users/me"),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -53,7 +54,7 @@ class AuthService {
     if (refresh == null) return false;
 
     final response = await http.post(
-      Uri.parse("$baseUrl/refresh"),
+      Uri.parse("$baseUrl/auth/refresh"),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({"refresh_token": refresh}),
     );
@@ -67,5 +68,18 @@ class AuthService {
     print("Erro ao renovar token: ${response.body}");
     AuthManager().clearTokens();
     return false;
+  }
+
+  Future<void> register(RegisterData data) async {
+    final url = Uri.parse("$baseUrl/users/");
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data.toJson()),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Falha ao criar usuário: ${response.body}');
+    }
   }
 }
