@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'auth_manager.dart';
+import 'package:plenimind_app/core/auth/register_data.dart';
 
 class AuthService {
-  final String baseUrl = "localhost:8080//";
+  final String baseUrl = "https://modelo-ia-ataque-de-panico.onrender.com";
 
   Future<bool> login(String email, String password) async {
     final response = await http.post(
@@ -67,5 +68,18 @@ class AuthService {
     print("Erro ao renovar token: ${response.body}");
     AuthManager().clearTokens();
     return false;
+  }
+
+  Future<void> register(RegisterData data) async {
+    final url = Uri.parse("$baseUrl/");
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data.toJson()),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Falha ao criar usuário: ${response.body}');
+    }
   }
 }

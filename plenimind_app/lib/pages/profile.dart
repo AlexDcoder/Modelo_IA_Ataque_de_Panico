@@ -4,6 +4,8 @@ import 'package:plenimind_app/components/profile/profie_form.dart';
 import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/schemas/profile/profile_model.dart';
 import '../components/profile/profile_app_bar.dart';
+import 'package:provider/provider.dart';
+import 'package:plenimind_app/core/auth/register_provider.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -43,6 +45,12 @@ class _ProfilePageState extends State<ProfilePage> {
       _showSnackBar('Please set detection time');
       return;
     }
+
+    final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
+    registerProvider.setProfileInfo(
+      _model.yourNameTextController!.text,
+      _model.cityTextController!.text,
+    );
 
     Navigator.pushNamed(context, ContactPage.routePath);
   }
