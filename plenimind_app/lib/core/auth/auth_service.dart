@@ -8,7 +8,7 @@ class AuthService {
 
   Future<bool> login(String email, String password) async {
     final response = await http.post(
-      Uri.parse("$baseUrl/login"),
+      Uri.parse("$baseUrl/auth/login"),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({"email": email, "password": password}),
     );
@@ -28,7 +28,7 @@ class AuthService {
     if (token == null) return null;
 
     final response = await http.get(
-      Uri.parse("$baseUrl/me"),
+      Uri.parse("$baseUrl/users/me"),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ class AuthService {
     if (refresh == null) return false;
 
     final response = await http.post(
-      Uri.parse("$baseUrl/refresh"),
+      Uri.parse("$baseUrl/auth/refresh"),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({"refresh_token": refresh}),
     );
@@ -71,7 +71,7 @@ class AuthService {
   }
 
   Future<void> register(RegisterData data) async {
-    final url = Uri.parse("$baseUrl/");
+    final url = Uri.parse("$baseUrl/users/");
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
