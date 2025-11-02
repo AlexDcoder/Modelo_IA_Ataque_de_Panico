@@ -10,10 +10,10 @@ class UserCreateDTO(UserPersonalData):
 
     @field_validator("password")
     def validate_password(cls, value: str) -> str:
-        pattern = r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$"
+        pattern = r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$"
         if not re.match(pattern, value):
             raise ValueError(
-                "Password must be at least 8 characters long, contain at least one letter, one number, and one special character."
+                "The password must contain at least 8 characters, including at least one letter and one number."
             )
         return value
     
@@ -45,11 +45,12 @@ class UserUpdateDTO(BaseModel):
     emergency_contact: Optional[list[EmergencyContact]] = None
 
     @field_validator("password")
-    def validate_password(cls, value: Optional[str]) -> Optional[str]:
-        if value:
-            pattern = r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$"
-            if not re.match(pattern, value):
-                raise ValueError("Invalid password format.")
+    def validate_password(cls, value: str) -> str:
+        pattern = r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$"
+        if not re.match(pattern, value):
+            raise ValueError(
+                "The password must contain at least 8 characters, including at least one letter and one number."
+        )
         return value
     
     @field_validator("detection_time")
