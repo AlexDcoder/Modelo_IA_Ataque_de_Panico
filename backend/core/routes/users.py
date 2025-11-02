@@ -121,7 +121,7 @@ async def create_user(
         
         # Garantir que detection_time é string
         if isinstance(data_copy.get('detection_time'), datetime):
-            data_copy['detection_time'] = data_copy['detection_time'].isoformat()
+            data_copy['detection_time'] = data_copy['detection_time'].strftime('%H:%M:%S')
         
         # CORREÇÃO CRÍTICA: Salvar a senha hasheada
         data_copy['password'] = hash_password(data_copy['password'])
