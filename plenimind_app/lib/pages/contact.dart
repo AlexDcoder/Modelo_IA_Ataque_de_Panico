@@ -162,6 +162,14 @@ class _ContactPageState extends State<ContactPage> {
       );
 
       final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
+
+      final selectedAsMap = selected.map((c) => {
+        "name": c.name,
+        "phone": c.phone,
+      }).toList();
+
+      registerProvider.setEmergencyContacts(selectedAsMap);
+      
       final registerData = registerProvider.data;
       final authService = AuthService();
 
