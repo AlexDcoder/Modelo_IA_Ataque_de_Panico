@@ -3,12 +3,11 @@ from core.schemas.feedback import FeedbackInput
 from core.services.ai_service import AIService
 from core.logger import get_logger
 from core.security.auth_middleware import get_current_user
+from core.dependencies import get_ai_service
 
 router = APIRouter()
 logger = get_logger(__name__)
 
-def get_ai_service() -> AIService:
-    return AIService()
 
 @router.post("/")
 async def send_feedback(
