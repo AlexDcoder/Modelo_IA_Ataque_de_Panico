@@ -123,11 +123,11 @@ async def create_user(
         if isinstance(data_copy.get('detection_time'), datetime):
             data_copy['detection_time'] = data_copy['detection_time'].strftime('%H:%M:%S')
         
-        # CORREÇÃO CRÍTICA: Salvar a senha hasheada
+        # Salvar a senha hasheada
         data_copy['password'] = hash_password(data_copy['password'])
         logger.info("Password hashed successfully")
         
-        # ✅ Firebase gera UID automaticamente - passar None
+        # Firebase gera UID automaticamente - passar None
         result = db_service.create_user(None, data_copy)
         generated_uid = result.get("uid")
         
@@ -235,7 +235,7 @@ async def delete_user(
         
         # Também deletar dados vitais associados
         try:
-            db_service._connector.delete_data(f"vital_data/{uid}")
+            db_service.delete_vital(uid)  # CORREÇÃO: Usar método do serviço
         except Exception as e:
             logger.warning(f"Could not delete vital data for user {uid}: {e}")
         

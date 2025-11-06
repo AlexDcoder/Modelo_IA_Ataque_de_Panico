@@ -8,6 +8,7 @@ from core.dependencies import get_db_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="", tags=["vitals"])
+
 # Buscar todos os dados vitais (apenas para administradores)
 @router.get("/")
 async def get_all_vital_data(

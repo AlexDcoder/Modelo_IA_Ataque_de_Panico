@@ -19,7 +19,7 @@ async def login(
     try:
         logger.info(f"Login attempt for email: {credentials.email}")
         
-        # Buscar usuário por email - CORREÇÃO: Busca mais robusta
+        # Buscar usuário por email
         users = db_service.get_all_users() or {}
         logger.info(f"Available users: {list(users.keys())}")
         
@@ -41,7 +41,7 @@ async def login(
                 detail="Invalid credentials"
             )
         
-        # CORREÇÃO CRÍTICA: Verificar se a senha existe no usuário
+        # Verificar se a senha existe no usuário
         if 'password' not in user_data:
             logger.error(f"User {user_uid} has no password stored")
             raise HTTPException(
@@ -96,7 +96,7 @@ async def refresh_token(
                 detail="Invalid token"
             )
         
-        # CORREÇÃO: Verificar se o usuário ainda existe
+        # Verificar se o usuário ainda existe
         try:
             connector = RTDBConnector()
             db_service = DBService(connector)
@@ -107,7 +107,8 @@ async def refresh_token(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="User no longer exists"
                 )
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error checking user existence: {e}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid user"
