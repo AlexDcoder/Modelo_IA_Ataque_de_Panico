@@ -11,11 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11]
-        
+        python-version: [3.9, 3.10, 3.11, 3.12, 3.13]  # ✅ corrigido
     defaults:
       run:
-        working-directory: ./backend  # ✅ define o diretório raiz do backend
+        working-directory: ./backend
 
     steps:
     - name: Checkout code
@@ -26,7 +25,6 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
-        # ✅ Corrigido caminho do requirements.txt dentro de backend
         cache-dependency-path: './backend/requirements*.txt'
 
     - name: Install dependencies
@@ -37,18 +35,14 @@ jobs:
 
     - name: Setup test environment
       run: |
-        # Copia o arquivo de ambiente de teste se existir
-        cp tests/.env.test .env || echo "⚠️ Test env file not found, using defaults..."
-        
-        # Cria CSV de teste de exemplo
+        cp tests/.env.test .env || echo "⚠️ Test env file not found, continuing..."
         mkdir -p tests
         echo "heart_rate,respiration_rate,accel_std,spo2,stress_level,panic_attack" > tests/test_panic_attack_data.csv
         echo "80,16,0.5,98,3,0" >> tests/test_panic_attack_data.csv
         echo "120,25,1.2,92,8,1" >> tests/test_panic_attack_data.csv
 
     - name: Run tests with pytest
-      run: |
-        pytest tests/ -v --junitxml=test-results.xml --cov=plenimind_app --cov-report=xml
+      run: pytest tests/ -v --junitxml=test-results.xml --cov=plenimind_app --cov-report=xml
 
     - name: Upload test results
       uses: actions/upload-artifact@v4
@@ -56,9 +50,10 @@ jobs:
       with:
         name: test-results-${{ matrix.python-version }}
         path: |
-          backend/test-results.xml
-          backend/coverage.xml
+          test-results.xml     # ✅ corrigido (sem backend/)
+          coverage.xml         # ✅ corrigido
         retention-days: 30
+
 
 
   test-security:
