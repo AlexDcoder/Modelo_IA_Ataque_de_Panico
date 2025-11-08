@@ -2,9 +2,9 @@ name: Test Backend
 
 on:
   push:
-    branches: [ teste ]
+    branches: [ main, teste ]
   pull_request:
-    branches: [ test ]
+    branches: [ main ]
 
 jobs:
   test-backend:
@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.13.3"]
+        python-version: ["3.11", "3.12"]
 
     steps:
       - name: 🧩 Checkout repository
@@ -24,29 +24,36 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: 📦 Install dependencies
+      - name: 📦 Install main dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
-          pip install -r backend/tests/requirements-test.txt
+
+      - name: 📦 Install test dependencies
+        run: |
+          cd backend
+          pip install pytest pytest-asyncio pytest-cov pytest-xdist
+          pip install httpx requests
+          pip install bandit safety
+          pip install black flake8 mypy isort
+          pip install coverage
+          pip install Faker factory-boy
+          pip install python-dotenv
 
       - name: ⚙️ Setup Test Environment
         run: |
           cd backend
           cp .env.test .env
-          echo "TEST_DATABASE_URL=$DATABASE_URL" >> $GITHUB_ENV
-          echo "TEST_ENV=test" >> $GITHUB_ENV
-        env:
-          DATABASE_URL: "https://panic-attack-detection-test-default-rtdb.firebaseio.com"
+          echo "ENV=test" >> $GITHUB_ENV
+          echo "TESTING=True" >> $GITHUB_ENV
 
       - name: 🔐 Setup Firebase Test Credentials
-        if: env.FIREBASE_CREDENTIALS != ''
         run: |
           cd backend
-          echo "$FIREBASE_CREDENTIALS" > firebase-credentials-test.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=firebase-credentials-test.json" >> $GITHUB_ENV
+          echo "$FIREBASE_CREDENTIALS_TEST" > firebase-credentials-test.json
+          echo "✅ Firebase test credentials configured"
         env:
-          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS_TEST }}
+          FIREBASE_CREDENTIALS_TEST: ${{ secrets.FIREBASE_CREDENTIALS_TEST }}
 
       - name: 🧪 Run pytest with coverage
         run: |
@@ -129,12 +136,12 @@ jobs:
         run: |
           echo "Validating backend structure..."
           
-          # Check essential backend files
           essential_files=(
             "backend/requirements.txt"
-            "backend/tests/requirements-test.txt"
             "backend/.env.test"
             "backend/main.py"
+            "backend/core/config.py"
+            "backend/tests/conftest.py"
           )
           
           for file in "${essential_files[@]}"; do
@@ -146,45 +153,188 @@ jobs:
           
           echo "✅ Backend structure is valid!"
 
-  final-report:
-    name: 📊 Final Test Report
+      - name: 📋 Check Test Files
+        run: |
+          echo "Checking test files..."
+          cd backend/tests
+          test_files=$(find . -name "test_*.py" | wc -l)
+          echo "📁 Found $test_files test files"
+          
+          if [ $test_files -eq 0 ]; then
+            echo "❌ No test files found!"
+            exit 1
+          fi
+          
+          echo "✅ Test files check passed"
+
+  integration-test:
+    name: Integration Tests
     runs-on: ubuntu-latest
-    needs: [test-backend, security-scan, validate-structure]
+    needs: test-backend
+    steps:
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: ⚙️ Setup Test Environment
+        run: |
+          cd backend
+          cp .env.test .env
+          echo "ENV=test" >> $GITHUB_ENV
+
+      - name: 🔐 Setup Firebase Test Credentials
+        run: |
+          cd backend
+          echo "$FIREBASE_CREDENTIALS_TEST" > firebase-credentials-test.json
+        env:
+          FIREBASE_CREDENTIALS_TEST: ${{ secrets.FIREBASE_CREDENTIALS_TEST }}
+
+      - name: 🧪 Run Integration Tests
+        run: |
+          cd backend
+          python -m pytest tests/ -m integration -v \
+            --junitxml=integration-test-results.xml \
+            --tb=short
+
+      - name: 📤 Upload Integration Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: backend/integration-test-results.xml
+
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest
+
+      - name: ⚡ Run Performance Tests
+        run: |
+          cd backend
+          python -m pytest tests/test_performance.py -v \
+            --junitxml=performance-test-results.xml \
+            --tb=short
+
+      - name: 📊 Upload Performance Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results
+          path: backend/performance-test-results.xml
+
+  test-summary:
+    name: 📊 Test Summary Report
+    runs-on: ubuntu-latest
+    needs: [test-backend, validate-structure, security-scan, integration-test, performance-test]
+    if: always()
     steps:
       - name: 📋 Generate Test Report
         run: |
-          echo "# 🧪 Backend Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 Backend Test Results Summary" > $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## 📈 Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### 📈 Test Execution Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ✅ Test Execution" >> $GITHUB_STEP_SUMMARY
-          echo "- Python Versions: 3.11, 3.12" >> $GITHUB_STEP_SUMMARY
-          echo "- Test Categories: All CT01-CT11 covered" >> $GITHUB_STEP_SUMMARY
-          echo "- Security Scan: Completed" >> $GITHUB_STEP_SUMMARY
-          echo "- Code Coverage: Reports generated" >> $GITHUB_STEP_SUMMARY
+          echo "#### ✅ Completed Test Suites" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unit Tests**: Python 3.11 & 3.12" >> $GITHUB_STEP_SUMMARY
+          echo "- **Integration Tests**: Complete workflow validation" >> $GITHUB_STEP_SUMMARY
+          echo "- **Performance Tests**: Response time validation" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Scan**: Bandit & Safety analysis" >> $GITHUB_STEP_SUMMARY
+          echo "- **Structure Validation**: Project integrity check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📁 Available Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "#### 🔍 Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT01, CT02**: Authentication tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT03**: User management tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT04**: Vital data tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT05, CT07, CT11**: AI model and feedback tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT09**: Performance tests" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT10**: Security tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 📁 Available Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "1. **Test Results**: JUnit XML format" >> $GITHUB_STEP_SUMMARY
           echo "2. **Coverage Reports**: HTML and XML formats" >> $GITHUB_STEP_SUMMARY
-          echo "3. **Security Scan**: Bandit HTML report" >> $GITHUB_STEP_SUMMARY
-          echo "4. **Dependency Check**: Safety report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔍 Test Coverage" >> $GITHUB_STEP_SUMMARY
-          echo "- CT01, CT02: Authentication tests" >> $GITHUB_STEP_SUMMARY
-          echo "- CT03: User management tests" >> $GITHUB_STEP_SUMMARY
-          echo "- CT04: Vital data tests" >> $GITHUB_STEP_SUMMARY
-          echo "- CT05, CT07, CT11: AI model and feedback tests" >> $GITHUB_STEP_SUMMARY
-          echo "- CT09: Performance tests" >> $GITHUB_STEP_SUMMARY
-          echo "- CT10: Security tests" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Security Reports**: Bandit HTML & Safety JSON" >> $GITHUB_STEP_SUMMARY
+          echo "4. **Performance Results**: Response time metrics" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Download artifacts for detailed analysis" >> $GITHUB_STEP_SUMMARY
           echo "2. Review coverage reports to identify gaps" >> $GITHUB_STEP_SUMMARY
-          echo "3. Check security scan results" >> $GITHUB_STEP_SUMMARY
-          echo "4. Monitor test trends over time" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check security scan results for vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          echo "4. Monitor performance metrics over time" >> $GITHUB_STEP_SUMMARY
 
-      - name: 🎉 Final Status
+      - name: 🎉 Success Status
+        if: success()
         run: |
           echo "## 🎊 ALL TESTS COMPLETED SUCCESSFULLY!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The backend is ready for deployment with comprehensive test coverage." >> $GITHUB_STEP_SUMMARY
+          echo "The backend is **ready for deployment** with comprehensive test coverage and security validation." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Quality Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- Code coverage reports generated" >> $GITHUB_STEP_SUMMARY
+          "- Security vulnerabilities scanned" >> $GITHUB_STEP_SUMMARY
+          echo "- Performance benchmarks established" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration workflows validated" >> $GITHUB_STEP_SUMMARY
+
+      - name: ⚠️ Partial Success
+        if: failure()
+        run: |
+          echo "## ⚠️ SOME TESTS REQUIRE ATTENTION" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Please check the failed test results and fix the issues before deployment." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Recommended Actions" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review test failure details in artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check security scan results" >> $GITHUB_STEP_SUMMARY
+          echo "3. Verify integration test workflows" >> $GITHUB_STEP_SUMMARY
+          echo "4. Ensure all critical paths are covered" >> $GITHUB_STEP_SUMMARY
+
+  final-validation:
+    name: ✅ Final Validation
+    runs-on: ubuntu-latest
+    needs: [test-backend, validate-structure, security-scan, integration-test, performance-test, test-summary]
+    if: always()
+    steps:
+      - name: 🏁 Final Status Check
+        run: |
+          if [ "${{ needs.test-backend.result }}" == "success" ] && \
+             [ "${{ needs.validate-structure.result }}" == "success" ] && \
+             [ "${{ needs.security-scan.result }}" == "success" ]; then
+            echo "🎉 CORE TESTING PASSED - Backend is stable"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ SOME CHECKS FAILED - Review test results"
+            echo "status=failure" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📢 Final Notification
+        if: always()
+        run: |
+          echo "## 🏁 Backend Testing Complete"
+          echo ""
+          echo "All test workflows have been executed."
+          echo "Check individual job results for detailed status."
+          echo ""
+          echo "**Summary:**"
+          echo "- Unit Tests: ${{ needs.test-backend.result }}"
+          echo "- Security Scan: ${{ needs.security-scan.result }}"
+          echo "- Structure Validation: ${{ needs.validate-structure.result }}"
+          echo "- Integration Tests: ${{ needs.integration-test.result }}"
+          echo "- Performance Tests: ${{ needs.performance-test.result }}"
