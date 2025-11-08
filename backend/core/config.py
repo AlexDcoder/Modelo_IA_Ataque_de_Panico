@@ -2,7 +2,7 @@ import os
 import json
 from pathlib import Path
 from dotenv import load_dotenv
-from logger import get_logger
+from core.logger import get_logger
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
