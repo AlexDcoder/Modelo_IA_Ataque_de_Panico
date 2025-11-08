@@ -1,3 +1,5 @@
+import os
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.logger import get_logger
@@ -9,7 +11,6 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-
     global db_service, ai_service
     
     logger.info("Starting the application")
@@ -64,6 +65,5 @@ async def root() -> dict:
     return {"status": "running"}
 
 if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8080))  # CORREÇÃO: Porta 8080
     uvicorn.run(app, host="0.0.0.0", port=port)

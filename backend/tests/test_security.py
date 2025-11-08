@@ -97,10 +97,10 @@ class TestSecurity:
     
     def test_cors_headers(self, test_client):
         """Test that CORS headers are properly set"""
-        # CORREÇÃO: Usar um endpoint que existe e suporta CORS
-        response = test_client.get("/")
+        # CORREÇÃO: Simular requisição CORS com cabeçalho Origin
+        response = test_client.get("/", headers={"Origin": "http://localhost:3000"})
         
-        # Should have CORS headers
+        # Deve ter headers CORS
         assert "access-control-allow-origin" in response.headers
         assert response.headers["access-control-allow-origin"] == "*"
     
