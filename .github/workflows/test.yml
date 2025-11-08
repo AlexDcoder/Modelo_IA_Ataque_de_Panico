@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.13.3"]
+        python-version: ["3.13"]
 
     steps:
       - name: 🧩 Checkout repository
@@ -30,9 +30,22 @@ jobs:
           pip install -r backend/requirements.txt
           pip install -r backend/tests/requirements-test.txt
 
-      - name: ⚙️ Create .env.test file
+      - name: ⚙️ Create .env file for testing
         run: |
-          cp backend/.env.test backend/.env
+          cat <<EOF > backend/.env
+          DATABASE_URL="https://panic-attack-detection-test.firebaseio.com"
+          CREDENTIAL_FIREBASE_PATH="./firebase-credentials.json"
+          USER_PERSONAL_REF="user_personal_test"
+          USER_SENSOR_REF="vital_data_test"
+          JWT_SECRET_KEY="test-secret-key-for-jwt-tokens-2024-must-be-at-least-32-characters-long"
+          JWT_ALGORITHM="HS256"
+          ACCESS_TOKEN_EXPIRE_MINUTES=30
+          REFRESH_TOKEN_EXPIRE_DAYS=7
+          DATA_PATH="./tests/test_panic_attack_data.csv"
+          TEST_USER_EMAIL="test@example.com"
+          TEST_USER_PASSWORD="TestPassword123"
+          TEST_USER_USERNAME="testuser"
+          EOF
 
       - name: 🔐 Create Firebase credentials file
         run: |
