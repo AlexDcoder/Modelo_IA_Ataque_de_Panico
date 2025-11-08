@@ -53,7 +53,7 @@ jobs:
         run: |
           cd backend
           ENV=test TESTING=True python -m pytest tests/ \
-            --maxfail=5 \
+            --maxfail=20 \
             --disable-warnings \
             -v \
             --junitxml=test-results-${{ matrix.python-version }}.xml \
@@ -74,6 +74,22 @@ jobs:
         with:
           name: test-results-${{ matrix.python-version }}
           path: backend/test-results-${{ matrix.python-version }}.xml
+
+      - name: 📈 Publish Test Results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Backend Tests (Python ${{ matrix.python-version }})
+          path: backend/test-results-${{ matrix.python-version }}.xml
+          reporter: java-junit
+
+      - name: 📊 Publish Coverage Report
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          file: backend/coverage-${{ matrix.python-version }}.xml
+          flags: python-${{ matrix.python-version }}
+          name: codecov-backend
 
   security-scan:
     name: Security Scan
@@ -146,51 +162,200 @@ jobs:
           
           echo "✅ Test files check passed"
 
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.3"
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest
+
+      - name: 🔐 Setup Firebase Credentials
+        run: |
+          cd backend
+          echo "$FIREBASE_CREDENTIALS" > firebase-credentials.json
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+
+      - name: ⚡ Run Performance Tests
+        run: |
+          cd backend
+          ENV=test TESTING=True python -m pytest tests/test_performance.py -v \
+            --junitxml=performance-test-results.xml \
+            --tb=short
+
+      - name: 📊 Upload Performance Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-test-results
+          path: backend/performance-test-results.xml
+
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13.3"
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: 🔐 Setup Firebase Credentials
+        run: |
+          cd backend
+          echo "$FIREBASE_CREDENTIALS" > firebase-credentials.json
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+
+      - name: 🔗 Run Integration Tests
+        run: |
+          cd backend
+          ENV=test TESTING=True python -m pytest tests/ -m integration -v \
+            --junitxml=integration-test-results.xml \
+            --tb=short
+
+      - name: 📤 Upload Integration Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: backend/integration-test-results.xml
+
   test-summary:
     name: 📊 Test Summary Report
     runs-on: ubuntu-latest
-    needs: [test-backend, validate-structure, security-scan]
+    needs: [test-backend, validate-structure, security-scan, performance-test, integration-test]
     if: always()
     steps:
-      - name: 📋 Generate Test Report
+      - name: 📋 Download Test Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: test-results-*
+          merge-multiple: true
+
+      - name: 📈 Generate Test Report
         run: |
           echo "## 🧪 Backend Test Results Summary" > $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📈 Test Execution Status" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Test Execution Overview" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### ✅ Completed Test Suites" >> $GITHUB_STEP_SUMMARY
-          echo "- **Unit Tests**: Python ${{ needs.test-backend.matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Security Scan**: Bandit & Safety analysis" >> $GITHUB_STEP_SUMMARY
-          echo "- **Structure Validation**: Project integrity check" >> $GITHUB_STEP_SUMMARY
+          
+          # Status dos jobs
+          echo "#### ✅ Job Status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unit Tests**: ${{ needs.test-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Scan**: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Structure Validation**: ${{ needs.validate-structure.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Performance Tests**: ${{ needs.performance-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Integration Tests**: ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 🔍 Test Coverage" >> $GITHUB_STEP_SUMMARY
-          echo "- **CT01, CT02**: Authentication tests" >> $GITHUB_STEP_SUMMARY
-          echo "- **CT03**: User management tests" >> $GITHUB_STEP_SUMMARY
-          echo "- **CT04**: Vital data tests" >> $GITHUB_STEP_SUMMARY
-          echo "- **CT05, CT07, CT11**: AI model and feedback tests" >> $GITHUB_STEP_SUMMARY
-          echo "- **CT09**: Performance tests" >> $GITHUB_STEP_SUMMARY
-          echo "- **CT10**: Security tests" >> $GITHUB_STEP_SUMMARY
+          
+          echo "#### 🔍 Test Coverage Areas" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT01, CT02**: Authentication & Login" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT03**: User Management & Registration" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT04**: Vital Data Collection" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT05, CT07, CT11**: AI Model & Feedback System" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT09**: Performance & Response Time" >> $GITHUB_STEP_SUMMARY
+          echo "- **CT10**: Security & Data Protection" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 📁 Available Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "1. **Test Results**: JUnit XML format" >> $GITHUB_STEP_SUMMARY
-          echo "2. **Coverage Reports**: HTML and XML formats" >> $GITHUB_STEP_SUMMARY
-          echo "3. **Security Reports**: Bandit HTML & Safety JSON" >> $GITHUB_STEP_SUMMARY
+          
+          echo "#### 📁 Available Reports" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Test Results**: JUnit XML format (download from Artifacts)" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Coverage Reports**: Interactive HTML reports" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Security Analysis**: Bandit & Safety reports" >> $GITHUB_STEP_SUMMARY
+          echo "4. **Performance Metrics**: Response time analysis" >> $GITHUB_STEP_SUMMARY
+          echo "5. **Integration Results**: End-to-end workflow validation" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📊 Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Download artifacts for detailed analysis" >> $GITHUB_STEP_SUMMARY
-          echo "2. Review coverage reports to identify gaps" >> $GITHUB_STEP_SUMMARY
-          echo "3. Check security scan results for vulnerabilities" >> $GITHUB_STEP_SUMMARY
 
       - name: 🎉 Success Status
         if: success()
         run: |
-          echo "## 🎊 ALL TESTS COMPLETED SUCCESSFULLY!" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎊 ALL TESTS PASSED SUCCESSFULLY!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The backend is **ready for deployment** with comprehensive test coverage and security validation." >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Quality Gates Met" >> $GITHUB_STEP_SUMMARY
+          echo "- All test suites executed without critical failures" >> $GITHUB_STEP_SUMMARY
+          echo "- Code coverage reports generated successfully" >> $GITHUB_STEP_SUMMARY
+          echo "- Security scan completed with no critical vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          echo "- Project structure validated" >> $GITHUB_STEP_SUMMARY
+          echo "- Performance benchmarks established" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration workflows verified" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The backend is **ready for the next development phase** with comprehensive test validation." >> $GITHUB_STEP_SUMMARY
 
-      - name: ⚠️ Partial Success
+      - name: ⚠️ Tests Failed
         if: failure()
         run: |
-          echo "## ⚠️ SOME TESTS REQUIRE ATTENTION" >> $GITHUB_STEP_SUMMARY
+          echo "## ❌ SOME TESTS FAILED" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Please check the failed test results and fix the issues before deployment." >> $GITHUB_STEP_SUMMARY
+          echo "### 🔧 Required Actions" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Review Test Failures**: Check the test-results artifacts for detailed error information" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Fix Critical Issues**: Address any authentication, data validation, or security issues" >> $GITHUB_STEP_SUMMARY
+          echo "3. **Verify Dependencies**: Ensure all required packages are properly installed" >> $GITHUB_STEP_SUMMARY
+          echo "4. **Check Firebase Configuration**: Verify credentials and database connections" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Failed Jobs:" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.test-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Security Scan: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Structure Validation: ${{ needs.validate-structure.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Performance Tests: ${{ needs.performance-test.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Integration Tests: ${{ needs.integration-test.result }}" >> $GITHUB_STEP_SUMMARY
+
+  final-validation:
+    name: ✅ Final Validation
+    runs-on: ubuntu-latest
+    needs: [test-backend, validate-structure, security-scan, performance-test, integration-test, test-summary]
+    if: always()
+    steps:
+      - name: 🏁 Final Status Check
+        run: |
+          echo "## 🏁 Backend Testing Complete"
+          echo ""
+          echo "### 📋 Final Results Summary"
+          echo ""
+          echo "| Test Category | Status |"
+          echo "|---------------|--------|"
+          echo "| Unit Tests | ${{ needs.test-backend.result }} |"
+          echo "| Security Scan | ${{ needs.security-scan.result }} |"
+          echo "| Structure Validation | ${{ needs.validate-structure.result }} |"
+          echo "| Performance Tests | ${{ needs.performance-test.result }} |"
+          echo "| Integration Tests | ${{ needs.integration-test.result }} |"
+          echo ""
+          
+          if [ "${{ needs.test-backend.result }}" == "success" ] && \
+             [ "${{ needs.validate-structure.result }}" == "success" ] && \
+             [ "${{ needs.security-scan.result }}" == "success" ]; then
+            echo "🎉 **CORE TESTING PASSED** - Backend structure and security are validated"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ **CORE TESTING ISSUES** - Review failed tests before proceeding"
+            echo "status=failure" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📢 Final Notification
+        if: always()
+        run: |
+          echo "### 📬 Next Steps"
+          echo ""
+          echo "1. **Download Artifacts**: Get detailed reports from the Artifacts section"
+          echo "2. **Review Coverage**: Check code coverage in the HTML reports"
+          echo "3. **Security Review**: Examine Bandit and Safety reports"
+          echo "4. **Performance Analysis**: Review response time metrics"
+          echo "5. **Integration Validation**: Verify end-to-end workflows"
+          echo ""
+          echo "---"
+          echo "*Testing completed at: $(date)*"

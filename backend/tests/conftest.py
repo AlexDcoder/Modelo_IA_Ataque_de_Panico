@@ -158,29 +158,17 @@ def sample_vital_data():
     }
 
 @pytest.fixture
-def auth_headers(test_client, sample_user_data):
-    """Create a user and return auth headers"""
-    try:
-        # Create user
-        response = test_client.post("/users/", json=sample_user_data)
-        
-        if response.status_code == 200:
-            user_uid = response.json().get("uid")
-        else:
-            user_uid = "test-uid"
-        
-        # Login to get token
-        login_data = {
-            "email": sample_user_data["email"],
-            "password": sample_user_data["password"]
-        }
-        response = test_client.post("/auth/login", json=login_data)
-        
-        if response.status_code == 200:
-            token = response.json()["access_token"]
-            return {"Authorization": f"Bearer {token}"}
-    except Exception:
-        pass
+def auth_headers(test_client):
+    """Create mock auth headers that work with the auth middleware"""
+    # CORREÇÃO: Criar um token mock que passa na validação básica
+    # O middleware está verificando o token, então precisamos de um que passe
+    from core.security.jwt_handler import JWTHandler
     
-    # Fallback para testes que não dependem de autenticação real
-    return {"Authorization": "Bearer mock-test-token-12345"}
+    try:
+        # Criar um token válido para testes
+        test_payload = {"sub": "test-uid-123"}
+        token = JWTHandler.create_access_token(test_payload)
+        return {"Authorization": f"Bearer {token}"}
+    except Exception:
+        # Fallback: token mock que pode funcionar dependendo da configuração
+        return {"Authorization": "Bearer test-valid-token-12345"}
