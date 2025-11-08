@@ -2,7 +2,7 @@ name: Backend Tests - Test Branch
 
 on:
   push:
-    branches: [teste]  # ✅ Executa apenas na branch teste
+    branches: [teste]
   pull_request:
     branches: [teste]
 
@@ -11,22 +11,78 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.13.3"]
-      fail-fast: false
+        python-version: ["3.13"]
+        
     defaults:
       run:
         working-directory: ./backend
 
+    env:
+      PYTHONPATH: ${{ github.workspace }}/backend
+
     steps:
-    - name: Checkout code
+    - name: 🧾 Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
-        cache-dependency-path: './backend/requirements*.txt'
+        cache-dependency-path: backend/requirements*.txt
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
+
+    - name: ⚙️ Setup test environment
+      run: |
+        cp tests/.env.test .env || echo "⚠️ Test env file not found, using defaults..."
+        mkdir -p tests
+        echo "heart_rate,respiration_rate,accel_std,spo2,stress_level,panic_attack" > tests/test_panic_attack_data.csv
+        echo "80,16,0.5,98,3,0" >> tests/test_panic_attack_data.csv
+        echo "120,25,1.2,92,8,1" >> tests/test_panic_attack_data.csv
+        echo "95,20,0.8,95,6,0" >> tests/test_panic_attack_data.csv
+        echo "110,22,1.0,90,7,1" >> tests/test_panic_attack_data.csv
+
+    - name: 🧪 Run backend tests
+      run: |
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+        pytest tests/ -v --junitxml=test-results.xml --cov=plenimind_app --cov-report=xml
+
+    - name: 📤 Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          backend/test-results.xml
+          backend/coverage.xml
+        retention-days: 30
+
+  # ----------------------
+  # SECURITY TESTS
+  # ----------------------
+  test-security:
+    runs-on: ubuntu-latest
+    needs: test-backend
+    defaults:
+      run:
+        working-directory: ./backend
+
+    env:
+      PYTHONPATH: ${{ github.workspace }}/backend
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
 
     - name: Install dependencies
       run: |
@@ -36,55 +92,14 @@ jobs:
 
     - name: Setup test environment
       run: |
-        cp tests/.env.test .env || echo "⚠️ Test env file not found, continuing..."
+        cp tests/.env.test .env || echo "Test env not found"
         mkdir -p tests
-        echo "heart_rate,respiration_rate,accel_std,spo2,stress_level,panic_attack" > tests/test_panic_attack_data.csv
-        echo "80,16,0.5,98,3,0" >> tests/test_panic_attack_data.csv
-        echo "120,25,1.2,92,8,1" >> tests/test_panic_attack_data.csv
-
-    - name: Run tests with pytest
-      run: pytest tests/ -v --junitxml=test-results.xml --cov=plenimind_app --cov-report=xml
-
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results-${{ matrix.python-version }}
-        path: |
-          test-results.xml     # ✅ corrigido (sem backend/)
-          coverage.xml         # ✅ corrigido
-        retention-days: 30
-
-
-
-  test-security:
-    runs-on: ubuntu-latest
-    needs: test-backend
-    defaults:
-      run:
-        working-directory: ./backend
-        
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-        cache: 'pip'
-        cache-dependency-path: './backend/requirements*.txt'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
 
     - name: Run security tests
-      run: pytest tests/test_security.py -v -m security --junitxml=security-test-results.xml
+      run: |
+        pytest tests/test_security.py -v -m security --junitxml=security-test-results.xml
 
-    - name: Upload security test results
+    - name: Upload security results
       uses: actions/upload-artifact@v4
       if: always()
       with:
@@ -92,24 +107,27 @@ jobs:
         path: backend/security-test-results.xml
         retention-days: 30
 
-
+  # ----------------------
+  # PERFORMANCE TESTS
+  # ----------------------
   test-performance:
     runs-on: ubuntu-latest
     needs: test-backend
     defaults:
       run:
         working-directory: ./backend
-        
+
+    env:
+      PYTHONPATH: ${{ github.workspace }}/backend
+
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Setup Python
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
-        cache: 'pip'
-        cache-dependency-path: './backend/requirements*.txt'
+        python-version: '3.13'
 
     - name: Install dependencies
       run: |
@@ -118,10 +136,16 @@ jobs:
         if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
         pip install locust
 
-    - name: Run performance tests
-      run: pytest tests/test_performance.py -v -m performance --junitxml=performance-test-results.xml
+    - name: Setup test environment
+      run: |
+        cp tests/.env.test .env || echo "Test env not found"
+        mkdir -p tests
 
-    - name: Upload performance test results
+    - name: Run performance tests
+      run: |
+        pytest tests/test_performance.py -v -m performance --junitxml=performance-test-results.xml
+
+    - name: Upload performance results
       uses: actions/upload-artifact@v4
       if: always()
       with:
@@ -129,24 +153,27 @@ jobs:
         path: backend/performance-test-results.xml
         retention-days: 30
 
-
+  # ----------------------
+  # INTEGRATION TESTS
+  # ----------------------
   integration-tests:
     runs-on: ubuntu-latest
     needs: test-backend
     defaults:
       run:
         working-directory: ./backend
-        
+
+    env:
+      PYTHONPATH: ${{ github.workspace }}/backend
+
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Setup Python
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
-        cache: 'pip'
-        cache-dependency-path: './backend/requirements*.txt'
+        python-version: '3.13'
 
     - name: Install dependencies
       run: |
@@ -154,10 +181,16 @@ jobs:
         pip install -r requirements.txt
         if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
 
-    - name: Run integration tests
-      run: pytest tests/test_integration.py -v -m integration --junitxml=integration-test-results.xml
+    - name: Setup test environment
+      run: |
+        cp tests/.env.test .env || echo "Test env not found"
+        mkdir -p tests
 
-    - name: Upload integration test results
+    - name: Run integration tests
+      run: |
+        pytest tests/test_integration.py -v -m integration --junitxml=integration-test-results.xml
+
+    - name: Upload integration results
       uses: actions/upload-artifact@v4
       if: always()
       with:
@@ -165,7 +198,9 @@ jobs:
         path: backend/integration-test-results.xml
         retention-days: 30
 
-
+  # ----------------------
+  # TEST SUMMARY
+  # ----------------------
   test-summary:
     runs-on: ubuntu-latest
     needs: [test-backend, test-security, test-performance, integration-tests]
@@ -175,10 +210,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Display test summary
+    - name: Display summary
       run: |
         echo "=== 🧪 TEST EXECUTION SUMMARY ==="
-        echo "📍 Branch: teste"
         echo "📊 Backend tests: ${{ needs.test-backend.result }}"
         echo "🔒 Security tests: ${{ needs.test-security.result }}"
         echo "⚡ Performance tests: ${{ needs.test-performance.result }}"
@@ -190,8 +224,8 @@ jobs:
            [ "${{ needs.test-performance.result }}" == "success" ] && \
            [ "${{ needs.integration-tests.result }}" == "success" ]; then
           echo "🎉 All tests passed on teste branch!"
-          echo "✅ Ready to merge to main"
+          exit 0
         else
-          echo "❌ Some tests failed on teste branch."
-          echo "⚠️  Check the test results and fix before merging to main"
+          echo "❌ Some tests failed."
+          exit 1
         fi
