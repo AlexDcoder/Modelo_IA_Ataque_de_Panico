@@ -8,11 +8,12 @@ from fastapi.testclient import TestClient
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
-from backend.main import app
+from main import app
 from core.dependencies import get_db_service, get_ai_service
 
 # Configurar ambiente de teste
 os.environ['ENV'] = 'test'
+os.environ['TESTING'] = 'True'
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -103,12 +104,11 @@ def test_client():
                 self.feedbacks = []
                 
             def predict(self, info): 
-                # Lógica simples de predição baseada em múltiplos fatores
+                # Lógica simples de predição
                 heart_rate = info.get("heart_rate", 0)
                 respiration_rate = info.get("respiration_rate", 0)
                 stress_level = info.get("stress_level", 0)
                 
-                # Simula detecção de ataque de pânico
                 result = (
                     heart_rate > 100 or 
                     respiration_rate > 22 or 
