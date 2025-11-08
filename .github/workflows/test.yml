@@ -2,9 +2,9 @@ name: Test Backend
 
 on:
   push:
-    branches: [ main, teste ]
+    branches: [ teste ]
   pull_request:
-    branches: [ main ]
+    branches: [ teste ]
 
 jobs:
   test-backend:
@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.13.3"]
 
     steps:
       - name: 🧩 Checkout repository
