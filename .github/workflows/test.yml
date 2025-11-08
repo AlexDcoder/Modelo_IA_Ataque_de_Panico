@@ -42,7 +42,7 @@ jobs:
 
       - name: ⚙️ Setup Test Environment
         run: |
-          cd backend
+          cd backend/tests/
           cp .env.test .env
           echo "ENV=test" >> $GITHUB_ENV
           echo "TESTING=True" >> $GITHUB_ENV
@@ -187,7 +187,7 @@ jobs:
 
       - name: ⚙️ Setup Test Environment
         run: |
-          cd backend
+          cd backend/tests/
           cp .env.test .env
           echo "ENV=test" >> $GITHUB_ENV
 
