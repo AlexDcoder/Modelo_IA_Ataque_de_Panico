@@ -45,6 +45,25 @@ class DBService:
         logger.info(f"Deleting vital data for user {uid}")
         return self._connector.delete_data(f"{USER_SENSOR_REF}/{uid}")
     
+    # Adicione esta função no arquivo db_service.py
+    def check_existing_user(self, email: str = None, username: str = None) -> tuple[bool, bool]:
+        """Verifica se email ou username já existem no banco.
+        Retorna (email_exists, username_exists)"""
+        users = self.get_all_users() or {}
+        
+        email_exists = False
+        username_exists = False
+        
+        for user_data in users.values():
+            if email and user_data.get('email') == email:
+                email_exists = True
+            if username and user_data.get('username') == username:
+                username_exists = True
+            if email_exists and username_exists:
+                break
+        
+        return email_exists, username_exists
+    
     def close_connection(self):
         logger.info("Closing database connection")
         self._connector.close_connection()

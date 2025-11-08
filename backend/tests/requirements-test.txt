@@ -1,0 +1,30 @@
+# Testing Framework
+pytest==7.4.0
+pytest-asyncio==0.21.0
+pytest-cov==4.1.0
+pytest-xdist==3.3.0
+
+# HTTP Testing
+httpx==0.24.0
+requests==2.31.0
+
+# Performance Testing
+locust==2.15.0
+
+# Test Data
+Faker==18.11.2
+factory-boy==3.3.0
+
+# Code Quality
+black==23.7.0
+flake8==6.0.0
+mypy==1.5.0
+
+# Coverage
+coverage==7.2.7
+
+# Environment
+python-dotenv==1.0.0
+
+# Async
+asyncio==3.4.3

@@ -46,11 +46,12 @@ class UserUpdateDTO(BaseModel):
 
     @field_validator("password")
     def validate_password(cls, value: str) -> str:
-        pattern = r"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$"
-        if not re.match(pattern, value):
-            raise ValueError(
-                "The password must contain at least 8 characters, including at least one letter and one number."
-        )
+        if value:
+            pattern = r"^(?=.*[A-Za-z])(?=.*\d).{8,}$"
+            if not re.match(pattern, value):
+                raise ValueError(
+                    "A senha deve conter pelo menos 8 caracteres, incluindo pelo menos uma letra e um número."
+                )
         return value
     
     @field_validator("detection_time")

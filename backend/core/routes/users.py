@@ -100,34 +100,35 @@ async def create_user(
     try:
         logger.info(f"Attempting to create user: {user_data.email}")
         
-        all_users = db_service.get_all_users() or {}
-
-        for _, user in all_users.items():
-            if user.get("email") == user_data.email:
-                logger.warning(f"Attempt to create user with existing email: {user_data.email}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="User with this email already exists"
-                )
-            if user.get("username") == user_data.username:
-                logger.warning(f"Attempt to create user with existing username: {user_data.username}")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="User with this username already exists"
-                )
+        # Verificar se email ou username já existem
+        email_exists, username_exists = db_service.check_existing_user(
+            email=user_data.email, 
+            username=user_data.username
+        )
         
-        # Preparar dados
+        if email_exists:
+            logger.warning(f"Attempt to create user with existing email: {user_data.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this email already exists"
+            )
+            
+        if username_exists:
+            logger.warning(f"Attempt to create user with existing username: {user_data.username}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this username already exists"
+            )
+        
+        # Resto do código permanece igual...
         data_copy = user_data.model_dump()
         
-        # Garantir que detection_time é string
         if isinstance(data_copy.get('detection_time'), datetime):
             data_copy['detection_time'] = data_copy['detection_time'].strftime('%H:%M:%S')
         
-        # Salvar a senha hasheada
         data_copy['password'] = hash_password(data_copy['password'])
         logger.info("Password hashed successfully")
         
-        # Firebase gera UID automaticamente - passar None
         result = db_service.create_user(None, data_copy)
         generated_uid = result.get("uid")
         
@@ -138,7 +139,6 @@ async def create_user(
                 detail="Failed to create user: no UID generated"
             )
         
-        # Remover senha antes de retornar
         data_copy_without_password = data_copy.copy()
         if 'password' in data_copy_without_password:
             del data_copy_without_password['password']
@@ -160,46 +160,60 @@ async def update_user(
     db_service: DBService = Depends(get_db_service)
 ):
     try:
-        # Verificar autorização
         if uid != current_user:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this user"
             )
             
-        # Verificar se usuário existe
         existing_user = db_service.get_user(uid)
         if existing_user is None:
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Preparar dados para atualização
         update_data = user_data.model_dump(exclude_unset=True)
         
-        # Converter datetime para string se existir
+        # Verificar se está tentando alterar email ou username para valores que já existem
+        if 'email' in update_data or 'username' in update_data:
+            email_to_check = update_data.get('email')
+            username_to_check = update_data.get('username')
+            
+            email_exists, username_exists = db_service.check_existing_user(
+                email=email_to_check,
+                username=username_to_check
+            )
+            
+            # Filtrar para excluir o próprio usuário
+            if email_exists:
+                # Verificar se o email pertence a outro usuário
+                all_users = db_service.get_all_users() or {}
+                for existing_uid, user in all_users.items():
+                    if user.get("email") == email_to_check and existing_uid != uid:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Email already in use by another user"
+                        )
+            
+            if username_exists:
+                # Verificar se o username pertence a outro usuário
+                all_users = db_service.get_all_users() or {}
+                for existing_uid, user in all_users.items():
+                    if user.get("username") == username_to_check and existing_uid != uid:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Username already in use by another user"
+                        )
+        
+        # Resto do código permanece igual...
         if 'detection_time' in update_data and isinstance(update_data['detection_time'], datetime):
             update_data['detection_time'] = update_data['detection_time'].isoformat()
         
-        # Atualizar hash da senha se for fornecida
         if 'password' in update_data:
             update_data['password'] = hash_password(update_data['password'])
         
-        # Verificar se está tentando alterar email para um que já existe
-        if 'email' in update_data:
-            all_users = db_service.get_all_users() or {}
-            for existing_uid, user in all_users.items():
-                if user.get("email") == update_data['email'] and existing_uid != uid:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Email already in use by another user"
-                    )
-        
-        # Atualizar no Firebase
         db_service.update_user(uid, update_data)
         
-        # Buscar usuário atualizado
         updated_user = db_service.get_user(uid)
         
-        # Remover senha antes de retornar
         if 'password' in updated_user:
             del updated_user['password']
             
