@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, backend_dir)
 
-from main import app
+from backend.main import app
 from core.dependencies import get_db_service, get_ai_service
 
 # Configurar ambiente de teste
