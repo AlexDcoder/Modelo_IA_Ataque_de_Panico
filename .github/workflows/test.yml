@@ -1,231 +1,80 @@
-name: Backend Tests - Test Branch
+name: Test Backend
 
 on:
   push:
-    branches: [teste]
+    branches: [ main, teste ]
   pull_request:
-    branches: [teste]
+    branches: [ main ]
 
 jobs:
   test-backend:
+    name: Run Backend Tests
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         python-version: ["3.13"]
-        
-    defaults:
-      run:
-        working-directory: ./backend
-
-    env:
-      PYTHONPATH: ${{ github.workspace }}/backend
 
     steps:
-    - name: 🧾 Checkout repository
-      uses: actions/checkout@v4
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
 
-    - name: 🐍 Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-        cache-dependency-path: backend/requirements*.txt
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    - name: 📦 Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
+      - name: 📦 Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-test.txt
 
-    - name: ⚙️ Setup test environment
-      run: |
-        cp tests/.env.test .env || echo "⚠️ Test env file not found, using defaults..."
-        mkdir -p tests
-        echo "heart_rate,respiration_rate,accel_std,spo2,stress_level,panic_attack" > tests/test_panic_attack_data.csv
-        echo "80,16,0.5,98,3,0" >> tests/test_panic_attack_data.csv
-        echo "120,25,1.2,92,8,1" >> tests/test_panic_attack_data.csv
-        echo "95,20,0.8,95,6,0" >> tests/test_panic_attack_data.csv
-        echo "110,22,1.0,90,7,1" >> tests/test_panic_attack_data.csv
+      - name: ⚙️ Create .env.test file
+        run: |
+          cp backend/.env.test backend/.env
 
-    - name: 🧪 Run backend tests
-      run: |
-        export PYTHONPATH=$PYTHONPATH:$(pwd)
-        pytest tests/ -v --junitxml=test-results.xml --cov=plenimind_app --cov-report=xml
+      - name: 🔐 Create Firebase credentials file
+        run: |
+          echo "$FIREBASE_CREDENTIALS" > backend/firebase-credentials.json
+        env:
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
 
-    - name: 📤 Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results-${{ matrix.python-version }}
-        path: |
-          backend/test-results.xml
-          backend/coverage.xml
-        retention-days: 30
+      - name: 🧠 Set PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/backend" >> $GITHUB_ENV
 
-  # ----------------------
-  # SECURITY TESTS
-  # ----------------------
-  test-security:
+      - name: 🧪 Run pytest with coverage
+        run: |
+          cd backend
+          pytest tests --maxfail=1 --disable-warnings -v \
+            --junitxml=test-results.xml --cov=. --cov-report=xml:coverage.xml
+
+      - name: 📤 Upload test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: |
+            backend/test-results.xml
+            backend/coverage.xml
+
+  validate-files:
+    name: Validate Files and Structure
     runs-on: ubuntu-latest
-    needs: test-backend
-    defaults:
-      run:
-        working-directory: ./backend
-
-    env:
-      PYTHONPATH: ${{ github.workspace }}/backend
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
+      - name: ✅ Check render.yaml exists
+        run: |
+          if [ ! -f render.yaml ]; then
+            echo "❌ render.yaml not found!"
+            exit 1
+          fi
+          echo "✅ render.yaml found."
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
-
-    - name: Setup test environment
-      run: |
-        cp tests/.env.test .env || echo "Test env not found"
-        mkdir -p tests
-
-    - name: Run security tests
-      run: |
-        pytest tests/test_security.py -v -m security --junitxml=security-test-results.xml
-
-    - name: Upload security results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-test-results
-        path: backend/security-test-results.xml
-        retention-days: 30
-
-  # ----------------------
-  # PERFORMANCE TESTS
-  # ----------------------
-  test-performance:
-    runs-on: ubuntu-latest
-    needs: test-backend
-    defaults:
-      run:
-        working-directory: ./backend
-
-    env:
-      PYTHONPATH: ${{ github.workspace }}/backend
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
-        pip install locust
-
-    - name: Setup test environment
-      run: |
-        cp tests/.env.test .env || echo "Test env not found"
-        mkdir -p tests
-
-    - name: Run performance tests
-      run: |
-        pytest tests/test_performance.py -v -m performance --junitxml=performance-test-results.xml
-
-    - name: Upload performance results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: performance-test-results
-        path: backend/performance-test-results.xml
-        retention-days: 30
-
-  # ----------------------
-  # INTEGRATION TESTS
-  # ----------------------
-  integration-tests:
-    runs-on: ubuntu-latest
-    needs: test-backend
-    defaults:
-      run:
-        working-directory: ./backend
-
-    env:
-      PYTHONPATH: ${{ github.workspace }}/backend
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
-
-    - name: Setup test environment
-      run: |
-        cp tests/.env.test .env || echo "Test env not found"
-        mkdir -p tests
-
-    - name: Run integration tests
-      run: |
-        pytest tests/test_integration.py -v -m integration --junitxml=integration-test-results.xml
-
-    - name: Upload integration results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: integration-test-results
-        path: backend/integration-test-results.xml
-        retention-days: 30
-
-  # ----------------------
-  # TEST SUMMARY
-  # ----------------------
-  test-summary:
-    runs-on: ubuntu-latest
-    needs: [test-backend, test-security, test-performance, integration-tests]
-    if: always()
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Display summary
-      run: |
-        echo "=== 🧪 TEST EXECUTION SUMMARY ==="
-        echo "📊 Backend tests: ${{ needs.test-backend.result }}"
-        echo "🔒 Security tests: ${{ needs.test-security.result }}"
-        echo "⚡ Performance tests: ${{ needs.test-performance.result }}"
-        echo "🔗 Integration tests: ${{ needs.integration-tests.result }}"
-        echo "================================="
-        
-        if [ "${{ needs.test-backend.result }}" == "success" ] && \
-           [ "${{ needs.test-security.result }}" == "success" ] && \
-           [ "${{ needs.test-performance.result }}" == "success" ] && \
-           [ "${{ needs.integration-tests.result }}" == "success" ]; then
-          echo "🎉 All tests passed on teste branch!"
-          exit 0
-        else
-          echo "❌ Some tests failed."
-          exit 1
-        fi
+      - name: ✅ Check plenimind_app folder exists
+        run: |
+          if [ ! -d plenimind_app ]; then
+            echo "❌ plenimind_app folder not found!"
+            exit 1
+          fi
+          echo "✅ plenimind_app folder found."
