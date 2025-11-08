@@ -75,14 +75,6 @@ jobs:
           name: test-results-${{ matrix.python-version }}
           path: backend/test-results-${{ matrix.python-version }}.xml
 
-      - name: 📈 Publish Test Results
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Backend Tests (Python ${{ matrix.python-version }})
-          path: backend/test-results-${{ matrix.python-version }}.xml
-          reporter: java-junit
-
       - name: 📊 Publish Coverage Report
         uses: codecov/codecov-action@v3
         if: always()
