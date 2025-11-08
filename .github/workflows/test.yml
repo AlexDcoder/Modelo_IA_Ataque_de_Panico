@@ -138,7 +138,7 @@ jobs:
           
           essential_files=(
             "backend/requirements.txt"
-            "backend/.env.test"
+            "backend/tests/.env.test"
             "backend/main.py"
             "backend/core/config.py"
             "backend/tests/conftest.py"
