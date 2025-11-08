@@ -40,25 +40,19 @@ jobs:
           pip install Faker factory-boy
           pip install python-dotenv
 
-      - name: ⚙️ Setup Test Environment
-        run: |
-          cd backend/tests/
-          cp .env.test .env
-          echo "ENV=test" >> $GITHUB_ENV
-          echo "TESTING=True" >> $GITHUB_ENV
-
-      - name: 🔐 Setup Firebase Test Credentials
+      - name: 🔐 Setup Firebase Credentials
         run: |
           cd backend
-          echo "$FIREBASE_CREDENTIALS_TEST" > firebase-credentials-test.json
-          echo "✅ Firebase test credentials configured"
+          echo "$FIREBASE_CREDENTIALS" > firebase-credentials.json
+          echo "✅ Firebase credentials configured from GitHub Secrets"
+          ls -la firebase-credentials.json
         env:
-          FIREBASE_CREDENTIALS_TEST: ${{ secrets.FIREBASE_CREDENTIALS_TEST }}
+          FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
 
       - name: 🧪 Run pytest with coverage
         run: |
           cd backend
-          python -m pytest tests/ \
+          ENV=test TESTING=True python -m pytest tests/ \
             --maxfail=5 \
             --disable-warnings \
             -v \
@@ -80,21 +74,6 @@ jobs:
         with:
           name: test-results-${{ matrix.python-version }}
           path: backend/test-results-${{ matrix.python-version }}.xml
-
-      - name: 📈 Publish Test Results
-        uses: dorny/test-reporter@v1
-        if: always()
-        with:
-          name: Backend Tests (Python ${{ matrix.python-version }})
-          path: backend/test-results-${{ matrix.python-version }}.xml
-          reporter: java-junit
-
-      - name: 📊 Publish Coverage Report
-        uses: codecov/codecov-action@v3
-        with:
-          file: backend/coverage-${{ matrix.python-version }}.xml
-          flags: python-${{ matrix.python-version }}
-          name: codecov-backend
 
   security-scan:
     name: Security Scan
@@ -167,84 +146,10 @@ jobs:
           
           echo "✅ Test files check passed"
 
-  integration-test:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: test-backend
-    steps:
-      - name: 🧩 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: 📦 Install dependencies
-        run: |
-          pip install -r backend/requirements.txt
-          pip install pytest pytest-asyncio
-
-      - name: ⚙️ Setup Test Environment
-        run: |
-          cd backend/tests/
-          cp .env.test .env
-          echo "ENV=test" >> $GITHUB_ENV
-
-      - name: 🔐 Setup Firebase Test Credentials
-        run: |
-          cd backend
-          echo "$FIREBASE_CREDENTIALS_TEST" > firebase-credentials-test.json
-        env:
-          FIREBASE_CREDENTIALS_TEST: ${{ secrets.FIREBASE_CREDENTIALS_TEST }}
-
-      - name: 🧪 Run Integration Tests
-        run: |
-          cd backend
-          python -m pytest tests/ -m integration -v \
-            --junitxml=integration-test-results.xml \
-            --tb=short
-
-      - name: 📤 Upload Integration Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-test-results
-          path: backend/integration-test-results.xml
-
-  performance-test:
-    name: Performance Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🧩 Checkout repository
-        uses: actions/checkout@v4
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: 📦 Install dependencies
-        run: |
-          pip install -r backend/requirements.txt
-          pip install pytest
-
-      - name: ⚡ Run Performance Tests
-        run: |
-          cd backend
-          python -m pytest tests/test_performance.py -v \
-            --junitxml=performance-test-results.xml \
-            --tb=short
-
-      - name: 📊 Upload Performance Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: performance-test-results
-          path: backend/performance-test-results.xml
-
   test-summary:
     name: 📊 Test Summary Report
     runs-on: ubuntu-latest
-    needs: [test-backend, validate-structure, security-scan, integration-test, performance-test]
+    needs: [test-backend, validate-structure, security-scan]
     if: always()
     steps:
       - name: 📋 Generate Test Report
@@ -254,9 +159,7 @@ jobs:
           echo "### 📈 Test Execution Status" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### ✅ Completed Test Suites" >> $GITHUB_STEP_SUMMARY
-          echo "- **Unit Tests**: Python 3.11 & 3.12" >> $GITHUB_STEP_SUMMARY
-          echo "- **Integration Tests**: Complete workflow validation" >> $GITHUB_STEP_SUMMARY
-          echo "- **Performance Tests**: Response time validation" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unit Tests**: Python ${{ needs.test-backend.matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Security Scan**: Bandit & Safety analysis" >> $GITHUB_STEP_SUMMARY
           echo "- **Structure Validation**: Project integrity check" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -272,13 +175,11 @@ jobs:
           echo "1. **Test Results**: JUnit XML format" >> $GITHUB_STEP_SUMMARY
           echo "2. **Coverage Reports**: HTML and XML formats" >> $GITHUB_STEP_SUMMARY
           echo "3. **Security Reports**: Bandit HTML & Safety JSON" >> $GITHUB_STEP_SUMMARY
-          echo "4. **Performance Results**: Response time metrics" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Download artifacts for detailed analysis" >> $GITHUB_STEP_SUMMARY
           echo "2. Review coverage reports to identify gaps" >> $GITHUB_STEP_SUMMARY
           echo "3. Check security scan results for vulnerabilities" >> $GITHUB_STEP_SUMMARY
-          echo "4. Monitor performance metrics over time" >> $GITHUB_STEP_SUMMARY
 
       - name: 🎉 Success Status
         if: success()
@@ -286,12 +187,6 @@ jobs:
           echo "## 🎊 ALL TESTS COMPLETED SUCCESSFULLY!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "The backend is **ready for deployment** with comprehensive test coverage and security validation." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ✅ Quality Metrics" >> $GITHUB_STEP_SUMMARY
-          echo "- Code coverage reports generated" >> $GITHUB_STEP_SUMMARY
-          "- Security vulnerabilities scanned" >> $GITHUB_STEP_SUMMARY
-          echo "- Performance benchmarks established" >> $GITHUB_STEP_SUMMARY
-          echo "- Integration workflows validated" >> $GITHUB_STEP_SUMMARY
 
       - name: ⚠️ Partial Success
         if: failure()
@@ -299,42 +194,3 @@ jobs:
           echo "## ⚠️ SOME TESTS REQUIRE ATTENTION" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Please check the failed test results and fix the issues before deployment." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔧 Recommended Actions" >> $GITHUB_STEP_SUMMARY
-          echo "1. Review test failure details in artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "2. Check security scan results" >> $GITHUB_STEP_SUMMARY
-          echo "3. Verify integration test workflows" >> $GITHUB_STEP_SUMMARY
-          echo "4. Ensure all critical paths are covered" >> $GITHUB_STEP_SUMMARY
-
-  final-validation:
-    name: ✅ Final Validation
-    runs-on: ubuntu-latest
-    needs: [test-backend, validate-structure, security-scan, integration-test, performance-test, test-summary]
-    if: always()
-    steps:
-      - name: 🏁 Final Status Check
-        run: |
-          if [ "${{ needs.test-backend.result }}" == "success" ] && \
-             [ "${{ needs.validate-structure.result }}" == "success" ] && \
-             [ "${{ needs.security-scan.result }}" == "success" ]; then
-            echo "🎉 CORE TESTING PASSED - Backend is stable"
-            echo "status=success" >> $GITHUB_OUTPUT
-          else
-            echo "⚠️ SOME CHECKS FAILED - Review test results"
-            echo "status=failure" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 📢 Final Notification
-        if: always()
-        run: |
-          echo "## 🏁 Backend Testing Complete"
-          echo ""
-          echo "All test workflows have been executed."
-          echo "Check individual job results for detailed status."
-          echo ""
-          echo "**Summary:**"
-          echo "- Unit Tests: ${{ needs.test-backend.result }}"
-          echo "- Security Scan: ${{ needs.security-scan.result }}"
-          echo "- Structure Validation: ${{ needs.validate-structure.result }}"
-          echo "- Integration Tests: ${{ needs.integration-test.result }}"
-          echo "- Performance Tests: ${{ needs.performance-test.result }}"
