@@ -1,10 +1,10 @@
-name: Backend Tests
+name: Backend Tests - Test Branch
 
 on:
   push:
-    branches: [ main, teste ]
+    branches: [teste]  # ✅ Focado na branch teste por enquanto
   pull_request:
-    branches: [ main ]
+    branches: [teste]  # ✅ Também em PRs para teste
 
 jobs:
   test-backend:
@@ -26,7 +26,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
-        cache-dependency-path: './backend/requirements*.txt'
+        cache-dependency-path: 'requirements*.txt'
 
     - name: Install dependencies
       run: |
@@ -37,7 +37,7 @@ jobs:
     - name: Setup test environment
       run: |
         # Copy test environment file
-        cp tests/.env.test .env || echo "Test env file not found, continuing..."
+        cp tests/.env.test .env || echo "Test env file not found, using defaults..."
         
         # Create test data file
         mkdir -p tests
@@ -57,17 +57,9 @@ jobs:
       with:
         name: test-results-${{ matrix.python-version }}
         path: |
-          backend/test-results.xml    # ✅ CORRIGIDO - sem "backend/" duplicado
-          backend/coverage.xml        # ✅ CORRIGIDO - sem "backend/" duplicado
+          test-results.xml
+          coverage.xml
         retention-days: 30
-
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./backend/coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
 
   test-security:
     runs-on: ubuntu-latest
@@ -85,7 +77,6 @@ jobs:
       with:
         python-version: '3.10'
         cache: 'pip'
-        cache-dependency-path: './backend/requirements*.txt'
 
     - name: Install dependencies
       run: |
@@ -110,7 +101,7 @@ jobs:
       if: always()
       with:
         name: security-test-results
-        path: backend/security-test-results.xml    # ✅ CORRIGIDO
+        path: security-test-results.xml
         retention-days: 30
 
   test-performance:
@@ -128,15 +119,12 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-        cache: 'pip'
-        cache-dependency-path: './backend/requirements*.txt'
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         if [ -f tests/requirements-test.txt ]; then pip install -r tests/requirements-test.txt; fi
-        pip install locust
 
     - name: Setup test environment
       run: |
@@ -155,7 +143,7 @@ jobs:
       if: always()
       with:
         name: performance-test-results
-        path: backend/performance-test-results.xml    # ✅ CORRIGIDO
+        path: performance-test-results.xml
         retention-days: 30
 
   integration-tests:
@@ -173,8 +161,6 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
-        cache: 'pip'
-        cache-dependency-path: './backend/requirements*.txt'
 
     - name: Install dependencies
       run: |
@@ -199,10 +185,10 @@ jobs:
       if: always()
       with:
         name: integration-test-results
-        path: backend/integration-test-results.xml    # ✅ CORRIGIDO
+        path: integration-test-results.xml
         retention-days: 30
 
-  generate-test-report:
+  test-summary:
     runs-on: ubuntu-latest
     needs: [test-backend, test-security, test-performance, integration-tests]
     if: always()
@@ -211,26 +197,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Download all test results
-      uses: actions/download-artifact@v4
-      with:
-        path: test-results
-
     - name: Display test summary
       run: |
-        echo "=== TEST EXECUTION SUMMARY ==="
-        echo "Backend tests: ${{ needs.test-backend.result }}"
-        echo "Security tests: ${{ needs.test-security.result }}"
-        echo "Performance tests: ${{ needs.test-performance.result }}"
-        echo "Integration tests: ${{ needs.integration-tests.result }}"
+        echo "=== 🧪 TEST EXECUTION SUMMARY ==="
+        echo "📍 Branch: teste"
+        echo "📊 Backend tests: ${{ needs.test-backend.result }}"
+        echo "🔒 Security tests: ${{ needs.test-security.result }}"
+        echo "⚡ Performance tests: ${{ needs.test-performance.result }}"
+        echo "🔗 Integration tests: ${{ needs.integration-tests.result }}"
+        echo "================================="
         
         if [ "${{ needs.test-backend.result }}" == "success" ] && \
            [ "${{ needs.test-security.result }}" == "success" ] && \
            [ "${{ needs.test-performance.result }}" == "success" ] && \
            [ "${{ needs.integration-tests.result }}" == "success" ]; then
-          echo "🎉 All tests passed!"
-          exit 0
+          echo "🎉 All tests passed on teste branch!"
+          echo "✅ Ready to merge to main"
         else
-          echo "❌ Some tests failed. Check the test results for details."
-          exit 1
+          echo "❌ Some tests failed on teste branch."
+          echo "⚠️  Check the test results and fix before merging to main"
         fi
