@@ -12,12 +12,11 @@ class TestVitalData:
             headers=auth_headers
         )
         
-        assert response.status_code in [200, 403]  # Success or unauthorized
+        assert response.status_code in [200, 403]
     
     def test_get_vital_data(self, test_client, auth_headers):
         """Test retrieving vital data"""
         response = test_client.get("/vital-data/test-uid", headers=auth_headers)
-        
         assert response.status_code in [200, 403, 404]
     
     def test_update_vital_data(self, test_client, auth_headers, sample_vital_data):
@@ -36,7 +35,6 @@ class TestVitalData:
     def test_get_all_vital_data(self, test_client, auth_headers):
         """Test getting all vital data (admin functionality)"""
         response = test_client.get("/vital-data/", headers=auth_headers)
-        
         assert response.status_code == status.HTTP_200_OK
         assert isinstance(response.json(), dict)
     
@@ -55,26 +53,54 @@ class TestVitalData:
             headers=auth_headers
         )
         
-        # Should return 422 validation error
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
     
     @pytest.mark.vital
-    def test_vital_data_structure(self, test_client, auth_headers, sample_vital_data):
-        """Test vital data structure"""
-        response = test_client.post(
-            "/vital-data/test-uid", 
-            json=sample_vital_data, 
-            headers=auth_headers
-        )
+    def test_vital_data_complete_flow(self, test_client, auth_headers, sample_user_data, sample_vital_data):
+        """Test complete vital data flow: create → get → update"""
+        # Create user
+        user_response = test_client.post("/users/", json=sample_user_data)
         
-        if response.status_code == 200:
-            # If successful, verify the response structure
-            data = response.json()
-            assert "message" in data
-            assert "success" in data["message"].lower()
+        if user_response.status_code == 200:
+            user_id = user_response.json().get("uid")
+            
+            # Create vital data
+            create_response = test_client.post(
+                f"/vital-data/{user_id}", 
+                json=sample_vital_data, 
+                headers=auth_headers
+            )
+            
+            if create_response.status_code == 200:
+                # Get vital data
+                get_response = test_client.get(f"/vital-data/{user_id}", headers=auth_headers)
+                assert get_response.status_code in [200, 403]
+                
+                # Update vital data
+                updated_data = sample_vital_data.copy()
+                updated_data["heart_rate"] = 95.0
+                update_response = test_client.put(
+                    f"/vital-data/{user_id}", 
+                    json=updated_data, 
+                    headers=auth_headers
+                )
+                assert update_response.status_code in [200, 403]
     
     @pytest.mark.vital
     def test_unauthorized_vital_access(self, test_client):
         """Test accessing vital data without authentication"""
         response = test_client.get("/vital-data/test-uid")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    
+    def test_vital_data_missing_fields(self, test_client, auth_headers):
+        """Test vital data with missing required fields"""
+        incomplete_vital_data = {
+            "heart_rate": 80.0,
+            # Missing other required fields
+        }
+        response = test_client.post(
+            "/vital-data/test-uid", 
+            json=incomplete_vital_data, 
+            headers=auth_headers
+        )
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

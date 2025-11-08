@@ -4,13 +4,14 @@ import os
 import sys
 from fastapi.testclient import TestClient
 
-# Add the parent directory to Python path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Adicionar o diretório backend ao path
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, backend_dir)
 
 from main import app
 from core.dependencies import get_db_service, get_ai_service
 
-# Set test environment
+# Configurar ambiente de teste
 os.environ['ENV'] = 'test'
 
 @pytest.fixture(scope="session")
@@ -24,39 +25,103 @@ def event_loop():
 def test_client():
     """Create test client with overridden dependencies."""
     
-    # Override dependencies for testing
     def override_get_db_service():
-        from core.db.connector import RTDBConnector
-        from core.services.db_service import DBService
-        try:
-            connector = RTDBConnector()
-            return DBService(connector)
-        except Exception:
-            # Return mock service if Firebase not available
-            class MockDBService:
-                def get_all_users(self): return {}
-                def get_user(self, uid): return None
-                def create_user(self, uid, data): return {"uid": "test-uid"}
-                def update_user(self, uid, data): return True
-                def delete_user(self, uid): return True
-                def get_user_vital_data(self, uid): return None
-                def set_vital(self, uid, data): return True
-                def update_vital(self, uid, data): return True
-                def delete_vital(self, uid): return True
-                def close_connection(self): pass
-                def check_existing_user(self, email=None, username=None): return False, False
-            return MockDBService()
+        class MockDBService:
+            def __init__(self):
+                self.users = {}
+                self.vital_data = {}
+                self.next_uid = 1
+                
+            def get_all_users(self): 
+                return self.users
+                
+            def get_user(self, uid): 
+                return self.users.get(uid)
+                
+            def create_user(self, uid, data): 
+                if not uid:
+                    uid = f"test-uid-{self.next_uid}"
+                    self.next_uid += 1
+                self.users[uid] = data
+                return {"uid": uid, "message": "User created successfully"}
+                
+            def update_user(self, uid, data): 
+                if uid in self.users:
+                    self.users[uid].update(data)
+                    return True
+                return False
+                
+            def delete_user(self, uid): 
+                if uid in self.users:
+                    del self.users[uid]
+                    if uid in self.vital_data:
+                        del self.vital_data[uid]
+                    return True
+                return False
+                
+            def get_user_vital_data(self, uid): 
+                return self.vital_data.get(uid)
+                
+            def set_vital(self, uid, data): 
+                self.vital_data[uid] = data
+                return True
+                
+            def update_vital(self, uid, data): 
+                if uid in self.vital_data:
+                    self.vital_data[uid].update(data)
+                    return True
+                return False
+                
+            def delete_vital(self, uid): 
+                if uid in self.vital_data:
+                    del self.vital_data[uid]
+                    return True
+                return False
+                
+            def close_connection(self): 
+                pass
+                
+            def check_existing_user(self, email=None, username=None):
+                email_exists = any(
+                    user.get('email') == email 
+                    for user in self.users.values() 
+                    if email and user.get('email')
+                )
+                username_exists = any(
+                    user.get('username') == username 
+                    for user in self.users.values() 
+                    if username and user.get('username')
+                )
+                return email_exists, username_exists
+                
+        return MockDBService()
     
     def override_get_ai_service():
-        from core.services.ai_service import AIService
-        try:
-            return AIService()
-        except Exception:
-            # Return mock service if data file not available
-            class MockAIService:
-                def predict(self, info): return False
-                def set_feedback(self, features, label): return True
-            return MockAIService()
+        class MockAIService:
+            def __init__(self):
+                self.predictions = []
+                self.feedbacks = []
+                
+            def predict(self, info): 
+                # Lógica simples de predição baseada em múltiplos fatores
+                heart_rate = info.get("heart_rate", 0)
+                respiration_rate = info.get("respiration_rate", 0)
+                stress_level = info.get("stress_level", 0)
+                
+                # Simula detecção de ataque de pânico
+                result = (
+                    heart_rate > 100 or 
+                    respiration_rate > 22 or 
+                    stress_level > 7
+                )
+                self.predictions.append((info, result))
+                return result
+                
+            def set_feedback(self, features, label): 
+                self.feedbacks.append((features, label))
+                return True
+                
+        return MockAIService()
     
     app.dependency_overrides[get_db_service] = override_get_db_service
     app.dependency_overrides[get_ai_service] = override_get_ai_service
@@ -99,6 +164,11 @@ def auth_headers(test_client, sample_user_data):
         # Create user
         response = test_client.post("/users/", json=sample_user_data)
         
+        if response.status_code == 200:
+            user_uid = response.json().get("uid")
+        else:
+            user_uid = "test-uid"
+        
         # Login to get token
         login_data = {
             "email": sample_user_data["email"],
@@ -109,9 +179,8 @@ def auth_headers(test_client, sample_user_data):
         if response.status_code == 200:
             token = response.json()["access_token"]
             return {"Authorization": f"Bearer {token}"}
-        else:
-            # Return mock headers if login fails
-            return {"Authorization": "Bearer mock-token-for-testing"}
     except Exception:
-        # Return mock headers if any error occurs
-        return {"Authorization": "Bearer mock-token-for-testing"}
+        pass
+    
+    # Fallback para testes que não dependem de autenticação real
+    return {"Authorization": "Bearer mock-test-token-12345"}

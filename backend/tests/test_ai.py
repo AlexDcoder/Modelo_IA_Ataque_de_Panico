@@ -36,7 +36,6 @@ class TestAIModel:
         }
         
         response = test_client.post("/feedback/", json=feedback_data, headers=auth_headers)
-        
         assert response.status_code in [200, 403]
     
     def test_feedback_validation(self, test_client, auth_headers):
@@ -90,6 +89,13 @@ class TestAIModel:
                 "accel_std": 0.3,
                 "spo2": 99.0,
                 "stress_level": 2.0
+            },
+            {
+                "heart_rate": 95.0,  # Borderline case
+                "respiration_rate": 20.0,
+                "accel_std": 0.8,
+                "spo2": 95.0,
+                "stress_level": 6.0
             }
         ]
         
@@ -101,3 +107,30 @@ class TestAIModel:
             )
             assert response.status_code == status.HTTP_200_OK
             assert "panic_attack_detected" in response.json()
+    
+    def test_prediction_edge_cases(self, test_client, auth_headers):
+        """Test prediction with edge case values"""
+        edge_cases = [
+            {
+                "heart_rate": 0.0,  # Minimum values
+                "respiration_rate": 0.0,
+                "accel_std": 0.0,
+                "spo2": 0.0,
+                "stress_level": 0.0
+            },
+            {
+                "heart_rate": 200.0,  # Extreme high values
+                "respiration_rate": 50.0,
+                "accel_std": 5.0,
+                "spo2": 100.0,
+                "stress_level": 10.0
+            }
+        ]
+        
+        for vital_data in edge_cases:
+            response = test_client.post(
+                "/ai/predict", 
+                json=vital_data, 
+                headers=auth_headers
+            )
+            assert response.status_code == status.HTTP_200_OK
