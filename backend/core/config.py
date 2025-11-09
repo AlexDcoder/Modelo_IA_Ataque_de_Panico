@@ -9,14 +9,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 logger = get_logger(__name__)
 
 # Determinar ambiente
-ENV = os.getenv('ENV', 'production')
-TESTING = os.getenv('TESTING', 'False').lower() == 'true'
+ENV = os.getenv('ENV')
+TESTING = str(os.getenv('TESTING')).lower() == 'true'
 
 # Em ambiente de teste, não carregamos .env, usamos variáveis de ambiente diretas
 if ENV == 'test' or TESTING:
     print("🔧 Running in TEST environment - using environment variables directly")
     # Não carrega .env, usa apenas variáveis de ambiente
 else:
+    logger.info(f"🌐 Environment: {ENV}")
     # Em produção, tenta carregar .env
     ENV_PATH = BASE_DIR / ".env"
     if ENV_PATH.exists():

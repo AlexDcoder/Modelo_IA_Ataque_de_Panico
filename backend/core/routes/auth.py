@@ -7,6 +7,7 @@ from core.schemas.dto.user_dto import UserLoginDTO
 from core.schemas.auth import Token, RefreshTokenRequest
 from core.logger import get_logger
 from core.dependencies import get_db_service
+from jose import JWTError
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["authentication"])
@@ -78,12 +79,18 @@ async def login(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
-    request: RefreshTokenRequest
+    request: RefreshTokenRequest,
+    db_service: DBService = Depends(get_db_service)
 ):
     try:
+        logger.info("Refresh token request received")
+        
+        # Decodificar o refresh token
         payload = JWTHandler.decode_token(request.refresh_token)
         
+        # Verificar se é um refresh token
         if payload.get("type") != "refresh":
+            logger.warning("Invalid token type for refresh")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type"
@@ -91,42 +98,45 @@ async def refresh_token(
         
         user_id = payload.get("sub")
         if not user_id:
+            logger.warning("Refresh token without subject")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token"
             )
         
         # Verificar se o usuário ainda existe
-        try:
-            connector = RTDBConnector()
-            db_service = DBService(connector)
-            user = db_service.get_user(user_id)
-            if user is None:
-                logger.warning(f"Refresh token for non-existent user: {user_id}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="User no longer exists"
-                )
-        except Exception as e:
-            logger.error(f"Error checking user existence: {e}")
+        user = db_service.get_user(user_id)
+        if user is None:
+            logger.warning(f"Refresh token for non-existent user: {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid user"
+                detail="User no longer exists"
             )
         
+        # Gerar novo access token
         new_access_token = JWTHandler.create_access_token({"sub": user_id})
         
-        logger.info(f"Token refreshed for user: {user_id}")
+        # Opcional: gerar novo refresh token (rotacionar)
+        new_refresh_token = JWTHandler.create_refresh_token({"sub": user_id})
+        
+        logger.info(f"Token refreshed successfully for user: {user_id}")
         return Token(
             access_token=new_access_token,
+            refresh_token=new_refresh_token,
             token_type="bearer"
         )
         
+    except JWTError as e:
+        logger.warning(f"Invalid refresh token: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token"
+        )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error refreshing token: {e}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error refreshing token"
         )
