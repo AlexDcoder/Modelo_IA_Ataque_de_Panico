@@ -21,16 +21,46 @@ jobs:
       working-directory: ./backend
       run: |
         python -m pip install --upgrade pip
+        echo "=== Installing main requirements ==="
         pip install -r requirements.txt
         
-        # Instala requirements-test.txt ignorando pywin32
+        echo "=== Checking for requirements-test.txt ==="
         if [ -f requirements-test.txt ]; then
+          echo "Found requirements-test.txt, filtering out pywin32..."
+          # Cria uma versão filtrada sem pywin32
           grep -v "pywin32" requirements-test.txt > requirements-test-linux.txt || true
+          echo "Filtered requirements-test-linux.txt:"
+          cat requirements-test-linux.txt
           pip install -r requirements-test-linux.txt
+        else
+          echo "requirements-test.txt not found"
         fi
         
-        # Instala dependências do Locust separadamente
+        echo "=== Installing Locust ==="
         pip install locust==2.20.1 requests==2.31.0
+
+    - name: Verify installations
+      working-directory: ./backend
+      run: |
+        echo "=== Checking installed packages ==="
+        pip list
+        echo "=== Verifying critical packages ==="
+        python -c "
+        try:
+            import fastapi
+            print('✅ FastAPI version:', fastapi.__version__)
+        except ImportError as e:
+            print('❌ FastAPI not found:', e)
+            exit(1)
+        "
+        python -c "
+        try:
+            import locust
+            print('✅ Locust version:', locust.__version__)
+        except ImportError as e:
+            print('❌ Locust not found:', e)
+            exit(1)
+        "
 
     - name: Run Locust tests
       working-directory: ./backend
@@ -47,6 +77,7 @@ jobs:
         JWT_ALGORITHM: HS256
         TEST_HOST: ${{ github.event.inputs.test_host || secrets.TEST_HOST }}
       run: |
+        echo "Testing host: $TEST_HOST"
         locust -f tests/performance/locustfile.py \
           --headless \
           --users 50 \
