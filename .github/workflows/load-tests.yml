@@ -17,27 +17,20 @@ jobs:
       with:
         python-version: '3.13.3'
 
-    - name: Install dependencies
+    - name: Install CI/CD dependencies
       working-directory: ./backend
       run: |
         python -m pip install --upgrade pip
-        echo "=== Installing main requirements ==="
-        pip install -r requirements.txt
-        
-        echo "=== Checking for requirements-test.txt ==="
-        if [ -f requirements-test.txt ]; then
-          echo "Found requirements-test.txt, filtering out pywin32..."
-          # Cria uma versão filtrada sem pywin32
-          grep -v "pywin32" requirements-test.txt > requirements-test-linux.txt || true
-          echo "Filtered requirements-test-linux.txt:"
-          cat requirements-test-linux.txt
-          pip install -r requirements-test-linux.txt
+        echo "=== Installing from requirements-ci-cd.txt ==="
+        if [ -f requirements-ci-cd.txt ]; then
+          pip install -r requirements-ci-cd.txt
+          echo "✅ requirements-ci-cd.txt installed successfully"
         else
-          echo "requirements-test.txt not found"
+          echo "❌ requirements-ci-cd.txt not found!"
+          echo "Installing from requirements.txt and locust separately"
+          pip install -r requirements.txt
+          pip install locust==2.20.1 requests==2.31.0
         fi
-        
-        echo "=== Installing Locust ==="
-        pip install locust==2.20.1 requests==2.31.0
 
     - name: Verify installations
       working-directory: ./backend
@@ -46,20 +39,15 @@ jobs:
         pip list
         echo "=== Verifying critical packages ==="
         python -c "
-        try:
-            import fastapi
-            print('✅ FastAPI version:', fastapi.__version__)
-        except ImportError as e:
-            print('❌ FastAPI not found:', e)
-            exit(1)
-        "
-        python -c "
-        try:
-            import locust
-            print('✅ Locust version:', locust.__version__)
-        except ImportError as e:
-            print('❌ Locust not found:', e)
-            exit(1)
+        packages = ['fastapi', 'locust', 'firebase_admin', 'pandas']
+        for pkg in packages:
+            try:
+                __import__(pkg.replace('-', '_'))
+                print(f'✅ {pkg} installed successfully')
+            except ImportError as e:
+                print(f'❌ {pkg} not found: {e}')
+                exit(1)
+        print('✅ All critical packages installed successfully')
         "
 
     - name: Run Locust tests
