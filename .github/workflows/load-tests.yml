@@ -22,7 +22,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-test.txt
+        
+        # Instala requirements-test.txt ignorando pywin32
+        if [ -f requirements-test.txt ]; then
+          grep -v "pywin32" requirements-test.txt > requirements-test-linux.txt || true
+          pip install -r requirements-test-linux.txt
+        fi
+        
+        # Instala dependências do Locust separadamente
+        pip install locust==2.20.1 requests==2.31.0
 
     - name: Run Locust tests
       working-directory: ./backend
