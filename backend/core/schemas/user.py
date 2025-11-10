@@ -11,7 +11,7 @@ class UserPersonalData(BaseModel):
 
     @field_validator("username")
     def validate_username(cls, value: str) -> str:
-        pattern = r'^[a-zA-Z0-9]+$'
+        pattern = r'^.{3,}'
         if not re.match(pattern, value):
             raise ValueError("Username must be alphanumeric.")
         return value
