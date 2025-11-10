@@ -23,7 +23,7 @@ class _StatusPageState extends State<StatusPage> {
 
   bool _isLoading = true;
   String _errorMessage = '';
-  String _userEmail = 'usuario@exemplo.com'; // Email temporário
+  String _userEmail = 'usuario@exemplo.com';
 
   @override
   void initState() {
@@ -49,18 +49,25 @@ class _StatusPageState extends State<StatusPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('PleniMind - Status'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
+    return WillPopScope(
+      onWillPop: () async {
+        // Impede que o usuário volte para telas anteriores do fluxo
+        return false;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('PleniMind - Status'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Colors.white,
+          automaticallyImplyLeading: false, // Remove botão voltar
+        ),
+        body:
+            _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage.isNotEmpty
+                ? Center(child: Text(_errorMessage))
+                : _buildStatusGrid(),
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage.isNotEmpty
-              ? Center(child: Text(_errorMessage))
-              : _buildStatusGrid(),
     );
   }
 

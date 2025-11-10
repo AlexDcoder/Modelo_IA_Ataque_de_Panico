@@ -17,6 +17,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late CreateProfileModel _model;
+  String? _nameError;
 
   @override
   void initState() {
@@ -27,38 +28,63 @@ class _ProfilePageState extends State<ProfilePage> {
     _model.cityTextController ??= TextEditingController();
     _model.cityFocusNode ??= FocusNode();
     _model.selectedDuration = Duration.zero;
+
+    // Listener para validação em tempo real do nome
+    _model.yourNameTextController!.addListener(_validateName);
+  }
+
+  void _validateName() {
+    final name = _model.yourNameTextController?.text ?? '';
+    if (name.isNotEmpty && name.length < 3) {
+      setState(() {
+        _nameError = 'O nome deve ter pelo menos 3 caracteres';
+      });
+    } else {
+      setState(() {
+        _nameError = null;
+      });
+    }
   }
 
   @override
   void dispose() {
+    _model.yourNameTextController?.removeListener(_validateName);
     _model.dispose();
     super.dispose();
   }
 
   void _handleNext() {
-    if (_model.yourNameTextController?.text.isEmpty ?? true) {
-      _showSnackBar('Please enter your name');
+    final name = _model.yourNameTextController?.text ?? '';
+
+    if (name.isEmpty) {
+      _showSnackBar('Por favor, insira seu nome');
+      return;
+    }
+
+    // Validação do nome - mínimo 3 caracteres
+    if (name.length < 3) {
+      _showSnackBar('O nome deve ter pelo menos 3 caracteres');
       return;
     }
 
     if (_model.cityTextController?.text.isEmpty ?? true) {
-      _showSnackBar('Please set detection time');
+      _showSnackBar('Por favor, defina o tempo de detecção');
       return;
     }
 
-    final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
-    registerProvider.setProfileInfo(
-      _model.yourNameTextController!.text,
-      _model.cityTextController!.text,
+    final registerProvider = Provider.of<RegisterProvider>(
+      context,
+      listen: false,
     );
+    registerProvider.setProfileInfo(name, _model.cityTextController!.text);
 
     Navigator.pushNamed(context, ContactPage.routePath);
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+    );
   }
 
   @override
@@ -72,7 +98,11 @@ class _ProfilePageState extends State<ProfilePage> {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: ProfileForm(model: _model, onNext: _handleNext),
+          child: ProfileForm(
+            model: _model,
+            onNext: _handleNext,
+            nameError: _nameError,
+          ),
         ),
       ),
     );
