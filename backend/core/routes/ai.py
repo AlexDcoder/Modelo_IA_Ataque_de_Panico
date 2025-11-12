@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from core.services.ai_service import AIService
 from core.schemas.user import UserVitalData
 from core.logger import get_logger
@@ -14,6 +14,10 @@ async def predict(
     current_user: str = Depends(get_current_user),
     ai_service: AIService = Depends(get_ai_service)
 ):
-    """Faz predição baseada apenas nos dados vitais"""
-    result = ai_service.predict(vitals.model_dump())
-    return {"panic_attack_detected": bool(result)}
+    try:
+        """Faz predição baseada apenas nos dados vitais"""
+        result = ai_service.predict(vitals.model_dump())
+        return {"panic_attack_detected": bool(result)}
+    except Exception as e:
+        logger.error(f"Error during prediction: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error during prediction")

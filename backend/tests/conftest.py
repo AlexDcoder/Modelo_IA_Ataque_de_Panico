@@ -5,11 +5,9 @@ import pytest
 from dotenv import load_dotenv
 import uuid
 import time
-import logging
+from ..core.logger import get_logger
 
-# Configure logging for tests
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Adiciona o diretório raiz do projeto ao Python path
 project_root = Path(__file__).parent.parent
@@ -44,27 +42,17 @@ def test_user_data():
         ]
     }
 
-def delete_user_completely(client, uid, token=None, max_retries=3):
+def delete_user_safely(client, uid, token=None, max_retries=3):
     """
-    Deleta um usuário completamente com todas as tentativas necessárias
+    Deleta um usuário de forma segura, sem tentar deletar dados vitais
     """
-    logger.info(f"🔄 Iniciando deleção completa do usuário {uid}")
+    logger.info(f"🔄 Iniciando deleção segura do usuário {uid}")
     
     for attempt in range(max_retries):
         try:
             headers = {"Authorization": f"Bearer {token}"} if token else {}
             
-            # 1. Deletar dados vitais
-            try:
-                vital_response = client.delete(f"/vital-data/{uid}", headers=headers)
-                if vital_response.status_code in [200, 404]:
-                    logger.info(f"  ✅ Dados vitais de {uid} removidos")
-                else:
-                    logger.warning(f"  ⚠️ Status {vital_response.status_code} ao remover dados vitais")
-            except Exception as e:
-                logger.warning(f"  ⚠️ Erro ao remover dados vitais: {e}")
-            
-            # 2. Deletar o usuário principal
+            # Apenas deletar o usuário (dados vitais serão limpos automaticamente pelo Firebase ou ficarão órfãos)
             try:
                 user_response = client.delete(f"/users/{uid}", headers=headers)
                 if user_response.status_code == 200:
@@ -91,28 +79,29 @@ def delete_user_completely(client, uid, token=None, max_retries=3):
 
 @pytest.fixture
 def cleanup_user(client):
-    """Fixture para limpeza manual robusta de usuários"""
-    users_to_cleanup = []
+    """Fixture para limpeza manual de UM usuário por teste"""
+    user_to_cleanup = None
     
     def _register_user_for_cleanup(uid, token=None):
-        """Registra um usuário para cleanup automático após o teste"""
-        users_to_cleanup.append((uid, token))
+        """Registra UM usuário para cleanup automático após o teste"""
+        nonlocal user_to_cleanup
+        if user_to_cleanup:
+            logger.warning(f"⚠️  Substituindo usuário {user_to_cleanup[0]} por {uid} - apenas um usuário por teste é suportado")
+        user_to_cleanup = (uid, token)
         logger.info(f"📝 Usuário {uid} registrado para cleanup automático")
         return uid
     
     yield _register_user_for_cleanup
     
-    # Cleanup após o teste - executa para todos os usuários registrados
-    if users_to_cleanup:
-        logger.info(f"🧹 Iniciando cleanup manual para {len(users_to_cleanup)} usuário(s)")
+    # Cleanup após o teste - executa apenas para o usuário registrado
+    if user_to_cleanup:
+        uid, token = user_to_cleanup
+        logger.info(f"🧹 Iniciando cleanup para usuário {uid}")
         
-        success_count = 0
-        for uid, token in users_to_cleanup:
-            logger.info(f"  🗑️  Processando usuário {uid}")
-            if delete_user_completely(client, uid, token):
-                success_count += 1
-        
-        logger.info(f"✅ Cleanup manual concluído: {success_count}/{len(users_to_cleanup)} usuários removidos")
+        if delete_user_safely(client, uid, token):
+            logger.info(f"✅ Cleanup concluído para usuário {uid}")
+        else:
+            logger.error(f"❌ Cleanup falhou para usuário {uid}")
 
 @pytest.fixture(scope="session", autouse=True)
 def final_cleanup(client):
@@ -163,8 +152,6 @@ def final_cleanup(client):
                     token = None
                     passwords_to_try = [
                         "testpassword123",
-                        "password123",
-                        "test123",
                         user_data.get('password', '')
                     ]
                     
@@ -185,8 +172,8 @@ def final_cleanup(client):
                         except:
                             continue
                     
-                    # Deletar usuário completamente
-                    delete_user_completely(client, uid, token)
+                    # Deletar usuário de forma segura
+                    delete_user_safely(client, uid, token)
             else:
                 logger.info("✅ Nenhum usuário de teste encontrado para limpeza final")
         else:
@@ -200,7 +187,7 @@ def final_cleanup(client):
 
 @pytest.fixture
 def test_user(client, test_user_data, cleanup_user):
-    """Cria um usuário de teste e registra automaticamente para cleanup"""
+    """Cria UM usuário de teste e registra automaticamente para cleanup"""
     # Criar usuário
     response = client.post("/users/", json=test_user_data)
     assert response.status_code == 200, f"Falha ao criar usuário: {response.text}"
@@ -222,7 +209,7 @@ def test_user(client, test_user_data, cleanup_user):
         "token": token
     }
     
-    # Registrar para cleanup manual automático
+    # Registrar para cleanup manual automático (APENAS ESTE USUÁRIO)
     cleanup_user(user_uid, token)
     
     logger.info(f"👤 Usuário de teste criado: {user_uid} ({test_user_data['email']})")
@@ -253,21 +240,4 @@ def panic_vital_data():
         "accel_std": 2.5,
         "spo2": 85.0,
         "stress_level": 8.5
-    }
-
-@pytest.fixture
-def unique_user_data():
-    """Gera dados de usuário únicos para testes que precisam criar múltiplos usuários"""
-    unique_id = uuid.uuid4().hex[:8]
-    return {
-        "username": f"unique_{unique_id}",
-        "email": f"unique_{unique_id}@example.com",
-        "password": "testpassword123",
-        "detection_time": "12:00:00",
-        "emergency_contact": [
-            {
-                "name": "Test Contact",
-                "phone": "+5511999999999"
-            }
-        ]
     }

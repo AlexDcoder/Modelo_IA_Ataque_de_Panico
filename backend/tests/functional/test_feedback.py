@@ -3,8 +3,8 @@ import pytest
 class TestAIFeedback:
     """CT07 - Feedback do usuário para IA"""
     
-    def test_ct07_user_feedback(self, client, auth_headers, test_user, test_vital_data):
-        """CT07: Usuário fornece feedback para melhorar IA"""
+    def test_user_feedback(self, client, test_user, auth_headers, test_vital_data):
+        """CT07: Usuário fornece feedback para melhorar IA - UM usuário"""
         uid = test_user["uid"]
         
         feedback_data = {

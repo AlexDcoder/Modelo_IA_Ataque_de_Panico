@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from core.services.db_service import DBService
 from core.logger import get_logger
 from core.schemas.user import UserVitalData
@@ -19,7 +19,7 @@ async def get_all_vital_data(
         return vital_data
     except Exception as e:
         logger.error(f"Error getting all vital data: {e}")
-        raise HTTPException(status_code=500, detail="Error getting vital data")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error getting vital data")
 
 # Buscar dados vitais do usuário
 @router.get("/{uid}", response_model=VitalResponseDTO)
@@ -32,7 +32,7 @@ async def get_user_vital_data(
         # Verificar autorização
         if uid != current_user:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to access this user's vital data"
             )
             
@@ -44,7 +44,7 @@ async def get_user_vital_data(
         # Buscar dados vitais
         vital_data = db_service.get_user_vital_data(uid)
         if vital_data is None:
-            raise HTTPException(status_code=404, detail="Vital data not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Vital data not found")
         
         return VitalResponseDTO(uid=uid, **vital_data)
         
@@ -52,7 +52,7 @@ async def get_user_vital_data(
         raise
     except Exception as e:
         logger.error(f"Error getting vital data: {e}")
-        raise HTTPException(status_code=500, detail="Error getting vital data")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error getting vital data")
 
 # Criar/atualizar dados vitais
 @router.post("/{uid}")
@@ -66,14 +66,14 @@ async def create_vital_data(
         # Verificar autorização
         if uid != current_user:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this user's vital data"
             )
             
         # Verificar se usuário existe
         user = db_service.get_user(uid)
         if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUNDtus.HTTP_404_NOT_FOUND, detail="User not found")
         
         vital_dict = vital_data.model_dump()
         
@@ -93,7 +93,7 @@ async def create_vital_data(
         raise
     except Exception as e:
         logger.error(f"Error creating/updating vital data: {e}")
-        raise HTTPException(status_code=500, detail="Error saving vital data")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error saving vital data")
 
 # Atualizar dados vitais
 @router.put("/{uid}")
@@ -107,14 +107,14 @@ async def update_vital_data(
         # Verificar autorização
         if uid != current_user:
             raise HTTPException(
-                status_code=403,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to update this user's vital data"
             )
             
         # Verificar se usuário existe
         user = db_service.get_user(uid)
         if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
         # Verificar se dados vitais existem
         existing_data = db_service.get_user_vital_data(uid)
@@ -130,4 +130,42 @@ async def update_vital_data(
         raise
     except Exception as e:
         logger.error(f"Error updating vital data: {e}")
-        raise HTTPException(status_code=500, detail="Error updating vital data")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error updating vital data")
+    
+# Deletar dados vitais
+@router.delete("/{uid}")
+async def delete_vital_data(
+    uid: str, 
+    current_user: str = Depends(get_current_user),
+    db_service: DBService = Depends(get_db_service)
+):
+    try:
+        # Verificar autorização
+        if uid != current_user:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to delete this user's vital data"
+            )
+            
+        # Verificar se usuário existe
+        user = db_service.get_user(uid)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="User not found"
+            )
+        
+        # Deletar dados vitais
+        result = db_service.delete_vital(uid)
+        
+        logger.info(f"Vital data deleted for user {uid}")
+        return {"message": "Vital data deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting vital data: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Error deleting vital data"
+        )
