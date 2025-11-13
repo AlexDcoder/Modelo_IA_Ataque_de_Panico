@@ -172,7 +172,6 @@ class _ContactPageState extends State<ContactPage> {
       registerProvider.setEmergencyContacts(selectedAsMap);
 
       final registerData = registerProvider.data;
-      final authService = AuthService();
 
       if (!registerData.isComplete()) {
         _showSnackBar("Dados incompletos para finalizar o cadastro.");
@@ -202,6 +201,7 @@ class _ContactPageState extends State<ContactPage> {
         _showSnackBar("Erro ao criar conta. Tente novamente.");
       }
     } catch (e) {
+      print('Erro detalhado no cadastro: $e');
       _showSnackBar('Erro ao salvar: $e');
     }
   }

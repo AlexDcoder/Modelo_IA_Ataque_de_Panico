@@ -11,7 +11,7 @@ class AuthService {
     final body = {"email": email, "password": password};
 
     try {
-      final http.Response response = await client.post('/auth/login', body);
+      final http.Response response = await client.post('auth/login', body);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -32,7 +32,6 @@ class AuthService {
       print('Exceção ao tentar logar: $e');
       return false;
     }
-    
   }
 
   Future<Map<String, dynamic>?> getCurrentUser() async {
@@ -45,7 +44,10 @@ class AuthService {
     };
 
     try {
-      final http.Response response = await client.get('/users/me', headers: headers);
+      final http.Response response = await client.get(
+        'users/me',
+        headers: headers,
+      );
 
       if (response.statusCode == 401) {
         final refreshed = await _refreshToken();
@@ -57,7 +59,9 @@ class AuthService {
         return jsonDecode(response.body) as Map<String, dynamic>;
       }
 
-      print('Erro ao buscar usuário (${response.statusCode}): ${response.body}');
+      print(
+        'Erro ao buscar usuário (${response.statusCode}): ${response.body}',
+      );
       return null;
     } catch (e) {
       print('Exceção ao buscar usuário: $e');
@@ -72,7 +76,7 @@ class AuthService {
     final body = {"refresh_token": refresh};
 
     try {
-      final http.Response response = await client.post('/auth/refresh', body);
+      final http.Response response = await client.post('auth/refresh', body);
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -96,7 +100,7 @@ class AuthService {
     final body = data.toJson();
 
     try {
-      final http.Response response = await client.post('/users', body);
+      final http.Response response = await client.post('users', body);
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('Falha ao criar usuário: ${response.body}');
@@ -106,5 +110,4 @@ class AuthService {
       rethrow;
     }
   }
-  
 }

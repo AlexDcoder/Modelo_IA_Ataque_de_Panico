@@ -11,6 +11,11 @@ class ApiClient {
     Map<String, dynamic> body, {
     Map<String, String>? headers,
   }) async {
+    // Garantir que o endpoint tenha barra no final
+    if (!endpoint.endsWith('/')) {
+      endpoint = '$endpoint/';
+    }
+
     final url = Uri.parse('$baseUrl/$endpoint');
 
     final defaultHeaders = {'Content-Type': 'application/json'};
@@ -32,6 +37,11 @@ class ApiClient {
     String endpoint, {
     Map<String, String>? headers,
   }) async {
+    // Garantir que o endpoint tenha barra no final
+    if (!endpoint.endsWith('/')) {
+      endpoint = '$endpoint/';
+    }
+
     final url = Uri.parse('$baseUrl/$endpoint');
 
     final defaultHeaders = {'Accept': 'application/json'};
@@ -49,6 +59,11 @@ class ApiClient {
     String endpoint, {
     Map<String, String>? headers,
   }) async {
+    // Garantir que o endpoint tenha barra no final
+    if (!endpoint.endsWith('/')) {
+      endpoint = '$endpoint/';
+    }
+
     final url = Uri.parse('$baseUrl/$endpoint');
 
     final defaultHeaders = {'Accept': 'application/json'};
@@ -67,6 +82,11 @@ class ApiClient {
     Map<String, dynamic> body, {
     Map<String, String>? headers,
   }) async {
+    // Garantir que o endpoint tenha barra no final
+    if (!endpoint.endsWith('/')) {
+      endpoint = '$endpoint/';
+    }
+
     final url = Uri.parse('$baseUrl/$endpoint');
 
     final defaultHeaders = {'Content-Type': 'application/json'};
