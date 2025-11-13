@@ -75,6 +75,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       context,
       listen: false,
     );
+
+    // Salvar apenas email e senha no provider
+    // O username será coletado na ProfilePage
     registerProvider.setEmailAndPassword(
       _emailCreateController.text,
       _passwordCreateController.text,

@@ -25,9 +25,9 @@ class RegisterProvider extends ChangeNotifier {
 
   void clear() {
     _data
+      ..username = null
       ..email = null
       ..password = null
-      ..username = null
       ..detectionTime = null
       ..emergencyContacts = [];
     notifyListeners();

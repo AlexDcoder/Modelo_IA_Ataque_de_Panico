@@ -180,7 +180,9 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# =========================
 # Operating System
+# =========================
 .DS_Store
 .DS_Store?
 ._*
@@ -267,41 +269,81 @@ pids
 *.pid.lock
 
 # =========================
-# Mobile (Flutter/Dart) - if applicable
+# Flutter / Dart
 # =========================
-# Flutter/Dart
+# Core Flutter directories
 .dart_tool/
 .packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-versions
 .pub-cache/
 .pub/
 build/
-.flutter-plugins
-.flutter-plugins-dependencies
-**/ios/Flutter/.last_build_id
-
-# Android
-**/android/**/gradle-wrapper.jar
-**/android/.gradle
-**/android/captures/
-**/android/gradlew
-**/android/gradlew.bat
-**/android/local.properties
-**/android/**/GeneratedPluginRegistrant.java
+coverage/
+generated_plugin_registrant.dart
 
 # iOS
+**/ios/Flutter/.last_build_id
+**/ios/Pods/
+**/ios/DerivedData/
+**/ios/.symlinks/
+**/ios/.generated/
+**/ios/Flutter/Flutter.framework/
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/App.framework/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
 **/ios/**/*.mode1v3
 **/ios/**/*.mode2v3
-**/ios/**/*.moved-aside
-**/ios/**/*.pbxuser
 **/ios/**/*.perspectivev3
-**/ios/**/*sync/
-**/ios/**/.sconsign.dblite
-**/ios/**/.tags*
-**/ios/**/.vagrant/
-**/ios/**/DerivedData/
-**/ios/**/Icon?
-**/ios/**/Pods/
-**/ios/**/.symlinks
+**/ios/**/*.pbxuser
+**/ios/**/*.moved-aside
+**/ios/**/*.xcuserstate
+
+# Android
+**/android/.gradle/
+**/android/captures/
+**/android/local.properties
+**/android/**/gradlew
+**/android/**/gradlew.bat
+**/android/**/gradle-wrapper.jar
+**/android/key.properties
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+**/android/**/GeneratedPluginRegistrant.java
+
+# Web
+lib/generated_plugin_registrant.dart
+.flutter-plugins-dependencies
+.flutter-plugins
+.flutter-versions
+**/web/.dart_tool/
+**/web/build/
+
+# Windows
+**/windows/flutter/ephemeral/
+**/windows/CMakeFiles/
+**/windows/build/
+
+# macOS
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+**/macos/DerivedData/
+
+# Linux
+**/linux/flutter/ephemeral/
+**/linux/build/
+
+# Symbolic links and temporary
+**/.dart_tool/
+**/.idea/
+**/.vscode/
+*.iml
+
+# Flutter analysis outputs
+analyzer-output.txt
 
 # =========================
 # Documentation

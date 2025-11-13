@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
+import 'package:plenimind_app/schemas/dto/user_create_dto.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/core/auth/auth_service.dart';
+import 'package:plenimind_app/service/user_service.dart';
 import 'package:provider/provider.dart';
 
 import 'package:plenimind_app/core/auth/register_provider.dart';
@@ -42,13 +44,12 @@ class _ContactPageState extends State<ContactPage> {
 
     if (user != null) {
       setState(() {
-        _userId = user["uid"]; 
+        _userId = user["uid"];
       });
     } else {
       _showSnackBar("Erro ao obter dados do usuário.");
     }
   }
-
 
   Future<void> _checkTermsStatus() async {
     // Verifica se já existem contatos salvos (indica que termos foram aceitos)
@@ -153,23 +154,23 @@ class _ContactPageState extends State<ContactPage> {
               priority: index + 1,
             );
           }).toList();
-      
-      await ContactService.saveEmergencyContacts(contactsWithPriority, _userId);
 
+      await ContactService.saveEmergencyContacts(contactsWithPriority, _userId);
 
       _showSnackBar(
         '${contactsWithPriority.length} contatos de emergência salvos!',
       );
 
-      final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
+      final registerProvider = Provider.of<RegisterProvider>(
+        context,
+        listen: false,
+      );
 
-      final selectedAsMap = selected.map((c) => {
-        "name": c.name,
-        "phone": c.phone,
-      }).toList();
+      final selectedAsMap =
+          selected.map((c) => {"name": c.name, "phone": c.phone}).toList();
 
       registerProvider.setEmergencyContacts(selectedAsMap);
-      
+
       final registerData = registerProvider.data;
       final authService = AuthService();
 
@@ -178,14 +179,28 @@ class _ContactPageState extends State<ContactPage> {
         return;
       }
 
-      await authService.register(registerData);
+      // Criar DTO para envio à API
+      final userCreateDTO = UserCreateDTO(
+        username: registerData.username!,
+        email: registerData.email!,
+        password: registerData.password!,
+        detectionTime: registerData.detectionTime!,
+      );
 
-      _showSnackBar("Conta criada com sucesso!");
-      registerProvider.clear();
+      // Usar UserService com DTO
+      final userService = UserService();
+      final userResponse = await userService.createUser(userCreateDTO);
 
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, StatusPage.routePath);
-      } 
+      if (userResponse != null) {
+        _showSnackBar("Conta criada com sucesso!");
+        registerProvider.clear();
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, StatusPage.routePath);
+        }
+      } else {
+        _showSnackBar("Erro ao criar conta. Tente novamente.");
+      }
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e');
     }
