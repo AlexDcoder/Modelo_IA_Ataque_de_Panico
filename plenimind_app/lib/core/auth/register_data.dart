@@ -17,13 +17,9 @@ class RegisterData {
 
   bool isComplete() {
     return username != null &&
-        username!.isNotEmpty &&
         email != null &&
-        email!.isNotEmpty &&
         password != null &&
-        password!.isNotEmpty &&
         detectionTime != null &&
-        detectionTime!.isNotEmpty &&
         emergencyContacts.isNotEmpty;
   }
 }

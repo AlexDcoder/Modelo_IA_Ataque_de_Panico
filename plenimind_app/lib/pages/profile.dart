@@ -1,32 +1,32 @@
 import 'package:flutter/material.dart';
+import '../pages/contact.dart';
 import 'package:plenimind_app/components/profile/profie_form.dart';
-import 'package:plenimind_app/components/profile/profile_app_bar.dart';
-import 'package:plenimind_app/schemas/profile/profile_model.dart';
-import 'package:plenimind_app/pages/contact.dart';
 import 'package:plenimind_app/pages/login.dart';
+import 'package:plenimind_app/schemas/profile/profile_model.dart';
+import '../components/profile/profile_app_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:plenimind_app/core/auth/register_provider.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
-
-  static String routePath = '/profile';
+  static String routePath = '/createProfile';
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final CreateProfileModel _model = CreateProfileModel();
-  String? _nameError;
+  late CreateProfileModel _model;
 
   @override
   void initState() {
     super.initState();
-    _model.yourNameTextController = TextEditingController();
-    _model.yourNameFocusNode = FocusNode();
-    _model.cityTextController = TextEditingController();
-    _model.cityFocusNode = FocusNode();
+    _model = CreateProfileModel();
+    _model.yourNameTextController ??= TextEditingController();
+    _model.yourNameFocusNode ??= FocusNode();
+    _model.cityTextController ??= TextEditingController();
+    _model.cityFocusNode ??= FocusNode();
+    _model.selectedDuration = Duration.zero;
   }
 
   @override
@@ -36,50 +36,43 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _handleNext() {
-    final name = _model.yourNameTextController!.text.trim();
-
-    if (name.isEmpty) {
-      setState(() => _nameError = 'Por favor, informe seu nome');
+    if (_model.yourNameTextController?.text.isEmpty ?? true) {
+      _showSnackBar('Please enter your name');
       return;
     }
 
-    final detectionTime = _model.selectedDuration;
-    final timeString =
-        "${detectionTime.inHours.toString().padLeft(2, '0')}:"
-        "${(detectionTime.inMinutes % 60).toString().padLeft(2, '0')}:"
-        "${(detectionTime.inSeconds % 60).toString().padLeft(2, '0')}";
+    if (_model.cityTextController?.text.isEmpty ?? true) {
+      _showSnackBar('Please set detection time');
+      return;
+    }
 
-    // Salvar no RegisterProvider
-    final registerProvider = Provider.of<RegisterProvider>(
-      context,
-      listen: false,
+    final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
+    registerProvider.setProfileInfo(
+      _model.yourNameTextController!.text,
+      _model.cityTextController!.text,
     );
-    registerProvider.setProfileInfo(name, timeString);
 
-    Navigator.pushReplacementNamed(context, ContactPage.routePath);
+    Navigator.pushNamed(context, ContactPage.routePath);
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ProfileAppBar(
-        onBackPressed: () {
-          Navigator.pushReplacementNamed(context, LoginPage.routePath);
-        },
-      ),
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: ProfileAppBar(routeToNavigate: LoginPage.routePath),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: ProfileForm(
-                  model: _model,
-                  onNext: _handleNext,
-                  nameError: _nameError,
-                ),
-              ),
-            ),
-          ],
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: ProfileForm(model: _model, onNext: _handleNext),
         ),
       ),
     );

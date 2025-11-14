@@ -59,25 +59,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Future<void> _handleSignUp() async {
     if (_emailCreateController.text.isEmpty ||
         _passwordCreateController.text.isEmpty) {
-      _showSnackBar('Por favor, preencha todos os campos');
-      return;
-    }
-
-    // Validação de senha - mínimo 8 caracteres
-    if (_passwordCreateController.text.length < 8) {
-      _showSnackBar('A senha deve ter pelo menos 8 caracteres');
+      _showSnackBar('Please fill in all fields');
       return;
     }
 
     setState(() => _isSignUpLoading = true);
 
-    final registerProvider = Provider.of<RegisterProvider>(
-      context,
-      listen: false,
-    );
-
-    // Salvar apenas email e senha no provider
-    // O username será coletado na ProfilePage
+    final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
     registerProvider.setEmailAndPassword(
       _emailCreateController.text,
       _passwordCreateController.text,
@@ -88,7 +76,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   Future<void> _handleSignIn() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showSnackBar('Por favor, preencha todos os campos');
+      _showSnackBar('Please fill in all fields');
       return;
     }
 
@@ -101,22 +89,20 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       );
 
       if (success) {
-        _showSnackBar('Login realizado com sucesso!');
+        _showSnackBar('Signed in successfully!');
         Navigator.pushReplacementNamed(context, StatusPage.routePath);
-      } else {
-        _showSnackBar('Falha no login. Verifique suas credenciais.');
       }
     } catch (e) {
-      _showSnackBar('Erro no login: ${e.toString()}');
+      _showSnackBar('Sign in failed: ${e.toString()}');
     } finally {
       setState(() => _isSignInLoading = false);
     }
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

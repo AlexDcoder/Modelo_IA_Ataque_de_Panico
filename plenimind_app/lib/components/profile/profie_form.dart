@@ -7,14 +7,8 @@ import 'profile_time_field.dart';
 class ProfileForm extends StatelessWidget {
   final CreateProfileModel model;
   final VoidCallback onNext;
-  final String? nameError;
 
-  const ProfileForm({
-    super.key,
-    required this.model,
-    required this.onNext,
-    this.nameError,
-  });
+  const ProfileForm({super.key, required this.model, required this.onNext});
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +17,6 @@ class ProfileForm extends StatelessWidget {
         ProfileNameField(
           controller: model.yourNameTextController!,
           focusNode: model.yourNameFocusNode!,
-          errorText: nameError,
         ),
         ProfileTimeField(
           controller: model.cityTextController!,

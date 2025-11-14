@@ -4,7 +4,6 @@ class UserPersonalDataResponse extends UserPersonalData {
   final String uid;
 
   UserPersonalDataResponse({
-    required super.username,
     required super.email,
     required super.password,
     required super.detectionTime,
@@ -13,7 +12,6 @@ class UserPersonalDataResponse extends UserPersonalData {
 
   factory UserPersonalDataResponse.fromJson(Map<String, dynamic> json) {
     return UserPersonalDataResponse(
-      username: json['username'],
       email: json['email'],
       password: json['password'],
       detectionTime: json['detection_time'],
