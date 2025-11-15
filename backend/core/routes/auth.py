@@ -18,25 +18,25 @@ async def login(
     db_service: DBService = Depends(get_db_service)
 ):
     try:
-        logger.info(f"Login attempt for email: {credentials.email}")
+        logger.info(f"🔄 [AUTH_LOGIN] Login attempt for email: {credentials.email}")
         
         # Buscar usuário por email
         users = db_service.get_all_users() or {}
-        logger.info(f"Available users: {list(users.keys())}")
+        logger.info(f"📊 [AUTH_LOGIN] Available users count: {len(users)}")
         
         user_data = None
         user_uid = None
         
         for uid, user in users.items():
-            logger.info(f"Checking user {uid}: {user.get('email')}")
+            logger.debug(f"🔍 [AUTH_LOGIN] Checking user {uid}: {user.get('email')}")
             if user.get("email") == credentials.email:
                 user_data = user
                 user_uid = uid
-                logger.info(f"User found with UID: {user_uid}")
+                logger.info(f"✅ [AUTH_LOGIN] User found with UID: {user_uid}")
                 break
         
         if not user_data:
-            logger.warning(f"Login attempt with non-existent email: {credentials.email}")
+            logger.warning(f"⚠️ [AUTH_LOGIN] Login attempt with non-existent email: {credentials.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -44,14 +44,14 @@ async def login(
         
         # Verificar se a senha existe no usuário
         if 'password' not in user_data:
-            logger.error(f"User {user_uid} has no password stored")
+            logger.error(f"❌ [AUTH_LOGIN] User {user_uid} has no password stored")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="User configuration error"
             )
         
         if not verify_password(credentials.password, user_data["password"]):
-            logger.warning(f"Invalid password attempt for user: {credentials.email}")
+            logger.warning(f"⚠️ [AUTH_LOGIN] Invalid password attempt for user: {credentials.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -61,7 +61,9 @@ async def login(
         access_token = JWTHandler.create_access_token({"sub": user_uid})
         refresh_token = JWTHandler.create_refresh_token({"sub": user_uid})
         
-        logger.info(f"User {user_uid} logged in successfully")
+        logger.info(f"✅ [AUTH_LOGIN] User {user_uid} logged in successfully")
+        logger.debug(f"🔑 [AUTH_LOGIN] Access token generated, refresh token generated")
+        
         return Token(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -71,7 +73,7 @@ async def login(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error during login: {e}")
+        logger.error(f"❌ [AUTH_LOGIN] Error during login: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error during authentication"
@@ -83,14 +85,14 @@ async def refresh_token(
     db_service: DBService = Depends(get_db_service)
 ):
     try:
-        logger.info("Refresh token request received")
+        logger.info("🔄 [AUTH_REFRESH] Refresh token request received")
         
         # Decodificar o refresh token
         payload = JWTHandler.decode_token(request.refresh_token)
         
         # Verificar se é um refresh token
         if payload.get("type") != "refresh":
-            logger.warning("Invalid token type for refresh")
+            logger.warning("⚠️ [AUTH_REFRESH] Invalid token type for refresh")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token type"
@@ -98,7 +100,7 @@ async def refresh_token(
         
         user_id = payload.get("sub")
         if not user_id:
-            logger.warning("Refresh token without subject")
+            logger.warning("⚠️ [AUTH_REFRESH] Refresh token without subject")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token"
@@ -107,7 +109,7 @@ async def refresh_token(
         # Verificar se o usuário ainda existe
         user = db_service.get_user(user_id)
         if user is None:
-            logger.warning(f"Refresh token for non-existent user: {user_id}")
+            logger.warning(f"⚠️ [AUTH_REFRESH] Refresh token for non-existent user: {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User no longer exists"
@@ -119,7 +121,7 @@ async def refresh_token(
         # Opcional: gerar novo refresh token (rotacionar)
         new_refresh_token = JWTHandler.create_refresh_token({"sub": user_id})
         
-        logger.info(f"Token refreshed successfully for user: {user_id}")
+        logger.info(f"✅ [AUTH_REFRESH] Token refreshed successfully for user: {user_id}")
         return Token(
             access_token=new_access_token,
             refresh_token=new_refresh_token,
@@ -127,7 +129,7 @@ async def refresh_token(
         )
         
     except JWTError as e:
-        logger.warning(f"Invalid refresh token: {e}")
+        logger.warning(f"⚠️ [AUTH_REFRESH] Invalid refresh token: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid refresh token"
@@ -135,7 +137,7 @@ async def refresh_token(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error refreshing token: {e}")
+        logger.error(f"❌ [AUTH_REFRESH] Error refreshing token: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error refreshing token"

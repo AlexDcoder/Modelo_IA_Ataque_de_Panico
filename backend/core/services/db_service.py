@@ -10,45 +10,75 @@ class DBService:
         self._connector = connector
         
     def get_all_users(self):
-        logger.info("Getting all users")
-        return self._connector.get_data(USER_PERSONAL_REF)
+        logger.info("🔄 [DB_SERVICE] Getting all users")
+        result = self._connector.get_data(USER_PERSONAL_REF)
+        logger.info(f"✅ [DB_SERVICE] Retrieved {len(result) if result else 0} users")
+        return result
 
     def get_user(self, uid):
-        logger.info(f"Getting user {uid}")
-        return self._connector.get_data(f"{USER_PERSONAL_REF}/{uid}")
+        logger.info(f"🔄 [DB_SERVICE] Getting user {uid}")
+        result = self._connector.get_data(f"{USER_PERSONAL_REF}/{uid}")
+        if result:
+            logger.info(f"✅ [DB_SERVICE] User {uid} found")
+        else:
+            logger.warning(f"⚠️ [DB_SERVICE] User {uid} not found")
+        return result
 
     def create_user(self, uid, user_data):
-        logger.info(f"Creating user")
-        return self._connector.add_data(USER_PERSONAL_REF, user_data, uid)
+        logger.info(f"🔄 [DB_SERVICE] Creating user with UID: {uid}")
+        logger.debug(f"📦 [DB_SERVICE] User data: {user_data}")
+        result = self._connector.add_data(USER_PERSONAL_REF, user_data, uid)
+        logger.info(f"✅ [DB_SERVICE] User created successfully")
+        logger.debug(f"📄 [DB_SERVICE] Create result: {result}")
+        return result
     
     def update_user(self, uid, user_data):
-        logger.info(f"Updating user {uid}")
-        return self._connector.update_data(f"{USER_PERSONAL_REF}/{uid}", user_data)
+        logger.info(f"🔄 [DB_SERVICE] Updating user {uid}")
+        logger.debug(f"📦 [DB_SERVICE] Update data: {user_data}")
+        result = self._connector.update_data(f"{USER_PERSONAL_REF}/{uid}", user_data)
+        logger.info(f"✅ [DB_SERVICE] User updated successfully")
+        logger.debug(f"📄 [DB_SERVICE] Update result: {result}")
+        return result
     
     def delete_user(self, uid):
-        logger.info(f"Deleting user {uid}")
-        return self._connector.delete_data(f"{USER_PERSONAL_REF}/{uid}")
+        logger.info(f"🔄 [DB_SERVICE] Deleting user {uid}")
+        result = self._connector.delete_data(f"{USER_PERSONAL_REF}/{uid}")
+        logger.info(f"✅ [DB_SERVICE] User deleted successfully")
+        return result
     
     def get_user_vital_data(self, uid):
-        logger.info(f"Getting vital data for user {uid}")
-        return self._connector.get_data(f"{USER_SENSOR_REF}/{uid}")
+        logger.info(f"🔄 [DB_SERVICE] Getting vital data for user {uid}")
+        result = self._connector.get_data(f"{USER_SENSOR_REF}/{uid}")
+        if result:
+            logger.info(f"✅ [DB_SERVICE] Vital data found for user {uid}")
+        else:
+            logger.warning(f"⚠️ [DB_SERVICE] Vital data not found for user {uid}")
+        return result
     
     def set_vital(self, uid: str, data: dict):
-        logger.info(f"Setting vital data for user {uid}")
-        return self._connector.add_data(USER_SENSOR_REF, data, uid=uid)
+        logger.info(f"🔄 [DB_SERVICE] Setting vital data for user {uid}")
+        logger.debug(f"📦 [DB_SERVICE] Vital data: {data}")
+        result = self._connector.add_data(USER_SENSOR_REF, data, uid=uid)
+        logger.info(f"✅ [DB_SERVICE] Vital data set successfully")
+        return result
 
     def update_vital(self, uid: str, data: dict):
-        logger.info(f"Updating vital data for user {uid}")
-        return self._connector.update_data(f"{USER_SENSOR_REF}/{uid}", data)
+        logger.info(f"🔄 [DB_SERVICE] Updating vital data for user {uid}")
+        logger.debug(f"📦 [DB_SERVICE] Update data: {data}")
+        result = self._connector.update_data(f"{USER_SENSOR_REF}/{uid}", data)
+        logger.info(f"✅ [DB_SERVICE] Vital data updated successfully")
+        return result
     
     def delete_vital(self, uid: str):
-        logger.info(f"Deleting vital data for user {uid}")
-        return self._connector.delete_data(f"{USER_SENSOR_REF}/{uid}")
+        logger.info(f"🔄 [DB_SERVICE] Deleting vital data for user {uid}")
+        result = self._connector.delete_data(f"{USER_SENSOR_REF}/{uid}")
+        logger.info(f"✅ [DB_SERVICE] Vital data deleted successfully")
+        return result
     
-    # Adicione esta função no arquivo db_service.py
     def check_existing_user(self, email: str = None, username: str = None) -> tuple[bool, bool]:
         """Verifica se email ou username já existem no banco.
         Retorna (email_exists, username_exists)"""
+        logger.info(f"🔄 [DB_SERVICE] Checking existing user - Email: {email}, Username: {username}")
         users = self.get_all_users() or {}
         
         email_exists = False
@@ -62,8 +92,10 @@ class DBService:
             if email_exists and username_exists:
                 break
         
+        logger.info(f"✅ [DB_SERVICE] Check result - Email exists: {email_exists}, Username exists: {username_exists}")
         return email_exists, username_exists
     
     def close_connection(self):
-        logger.info("Closing database connection")
+        logger.info("🔄 [DB_SERVICE] Closing database connection")
         self._connector.close_connection()
+        logger.info("✅ [DB_SERVICE] Database connection closed")

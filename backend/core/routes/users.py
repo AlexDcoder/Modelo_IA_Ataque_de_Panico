@@ -150,12 +150,19 @@ async def create_user(
         # Criar usuário no banco
         logger.info("💾 [CREATE_USER] Chamando db_service.create_user...")
         result = db_service.create_user(None, data_copy)
-        logger.debug(f"📄 [CREATE_USER] Resultado do db_service.create_user: {result}")
+        logger.info(f"📄 [CREATE_USER] Resultado do db_service.create_user: {result}")
+        
+        # Adicionar verificação detalhada do resultado
+        if not result:
+            logger.error("❌ [CREATE_USER] db_service.create_user retornou None ou vazio")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create user: no response from database"
+            )
         
         generated_uid = result.get("uid")
-        
         if not generated_uid:
-            logger.error("❌ [CREATE_USER] Falha ao gerar UID para novo usuário")
+            logger.error(f"❌ [CREATE_USER] Falha ao gerar UID para novo usuário. Result completo: {result}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create user: no UID generated"
@@ -177,7 +184,7 @@ async def create_user(
     except Exception as e:
         logger.error(f"❌ [CREATE_USER] Erro inesperado ao criar usuário: {str(e)}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating user: {str(e)}")
-
+    
 @router.put("/{uid}", response_model=UserResponseDTO)
 async def update_user(
     uid: str, 

@@ -13,25 +13,25 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     global db_service, ai_service
     
-    logger.info("Starting the application")
+    logger.info("🚀 [APP] Starting the application")
 
     try:
-        logger.info("Initializing services")
+        logger.info("🔄 [APP] Initializing services")
         db_service = get_db_service()
         ai_service = get_ai_service()
-        logger.info("All services initialized")
+        logger.info("✅ [APP] All services initialized successfully")
     except Exception as e:
-        logger.error(f"Error initializing services: {e}")
+        logger.error(f"❌ [APP] Error initializing services: {e}")
         raise
 
     yield
 
-    logger.info("Shutting down the application...")
+    logger.info("🔄 [APP] Shutting down the application...")
     try:
         db_service.close_connection()
-        logger.info("Firebase connection closed")
+        logger.info("✅ [APP] Firebase connection closed successfully")
     except Exception as e:
-        logger.error(f"Error during shutdown: {e}")
+        logger.error(f"❌ [APP] Error during shutdown: {e}")
 
 app = FastAPI(
     title='Panic Attack Detection API',
@@ -61,9 +61,10 @@ async def root() -> dict:
 
     Returns a JSON object with a single key-value pair, where the key is "status" and the value is "running".
     """
-    logger.info("Health check")
+    logger.info("🔍 [HEALTH] Health check endpoint called")
     return {"status": "running"}
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))  # CORREÇÃO: Porta 8080
+    logger.info(f"🚀 [APP] Starting server on port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)
