@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:plenimind_app/components/terms_conditions/section.dart';
 
 class TermsContent extends StatelessWidget {
-  final List<Map<String, String>> _sections = [
+  const TermsContent({super.key});
+
+  static final List<Map<String, String>> _sections = [
     {
       'title': '1. Aceitação dos Termos',
       'content':

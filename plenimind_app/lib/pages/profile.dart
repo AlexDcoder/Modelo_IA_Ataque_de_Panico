@@ -4,8 +4,6 @@ import 'package:plenimind_app/components/profile/profie_form.dart';
 import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/schemas/profile/profile_model.dart';
 import '../components/profile/profile_app_bar.dart';
-import 'package:provider/provider.dart';
-import 'package:plenimind_app/core/auth/register_provider.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -17,6 +15,8 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late CreateProfileModel _model;
+  late String _email;
+  late String _password;
 
   @override
   void initState() {
@@ -27,6 +27,23 @@ class _ProfilePageState extends State<ProfilePage> {
     _model.cityTextController ??= TextEditingController();
     _model.cityFocusNode ??= FocusNode();
     _model.selectedDuration = Duration.zero;
+
+    // Inicializar o controller do tempo com valor padrão
+    _model.cityTextController!.text = "00:00:00"; // Valor padrão de 30 minutos
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      _email = args['email'] ?? '';
+      _password = args['password'] ?? '';
+      debugPrint('📧 Email recebido: $_email');
+    } else {
+      debugPrint('⚠️ Nenhum argumento recebido na ProfilePage');
+    }
   }
 
   @override
@@ -37,28 +54,45 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _handleNext() {
     if (_model.yourNameTextController?.text.isEmpty ?? true) {
-      _showSnackBar('Please enter your name');
+      _showSnackBar('Por favor, informe seu nome');
       return;
     }
 
-    if (_model.cityTextController?.text.isEmpty ?? true) {
-      _showSnackBar('Please set detection time');
+    if (_model.selectedDuration == Duration.zero) {
+      _showSnackBar('Por favor, selecione o tempo de detecção');
       return;
     }
 
-    final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
-    registerProvider.setProfileInfo(
-      _model.yourNameTextController!.text,
-      _model.cityTextController!.text,
+    final detectionTime = _formatDuration(_model.selectedDuration);
+
+    debugPrint('🚀 Navegando para ContactPage com dados:');
+    debugPrint('   Nome: ${_model.yourNameTextController!.text}');
+    debugPrint('   Email: $_email');
+    debugPrint('   Tempo de detecção: $detectionTime');
+
+    Navigator.pushNamed(
+      context,
+      ContactPage.routePath,
+      arguments: {
+        'email': _email,
+        'password': _password,
+        'username': _model.yourNameTextController!.text,
+        'detectionTime': detectionTime,
+      },
     );
+  }
 
-    Navigator.pushNamed(context, ContactPage.routePath);
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours.toString().padLeft(2, '0');
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
   }
 
   @override
@@ -66,13 +100,104 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: ProfileAppBar(routeToNavigate: LoginPage.routePath),
+      appBar: ProfileAppBar(
+        routeToNavigate: LoginPage.routePath,
+        onBackPressed: () {
+          Navigator.pushReplacementNamed(context, LoginPage.routePath);
+        },
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: ProfileForm(model: _model, onNext: _handleNext),
+          child: Column(
+            children: [
+              // Header informativo
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Complete seu Perfil',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Preencha suas informações para personalizar sua experiência',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Formulário
+              ProfileForm(model: _model, onNext: _handleNext),
+
+              // Informações adicionais
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Por que precisamos dessas informações?',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '• Seu nome: Para personalizar suas notificações\n'
+                        '• Tempo de detecção: Para configurar a frequência de monitoramento dos seus sinais vitais',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class TermsHeader extends StatelessWidget {
+  const TermsHeader({super.key});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

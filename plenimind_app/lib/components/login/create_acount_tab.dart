@@ -34,8 +34,8 @@ class CreateAccountTab extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             LoginFormHeader(
-              title: 'Create Account',
-              subtitle: "Let's get started by filling out the form below.",
+              title: 'Criar Conta',
+              subtitle: "Vamos começar preenchendo o formulário abaixo.",
             ),
             const SizedBox(height: 24),
             LoginTextField(
@@ -48,14 +48,14 @@ class CreateAccountTab extends StatelessWidget {
             LoginTextField(
               controller: passwordController,
               focusNode: passwordFocusNode,
-              labelText: 'Password',
+              labelText: 'Senha',
               isPassword: true,
               passwordVisible: passwordVisible,
               onPasswordVisibilityChanged: onPasswordVisibilityChanged,
             ),
             const SizedBox(height: 24),
             LoginButton(
-              text: 'Get Started',
+              text: 'Começar',
               isLoading: isLoading,
               onPressed: onSubmit,
             ),

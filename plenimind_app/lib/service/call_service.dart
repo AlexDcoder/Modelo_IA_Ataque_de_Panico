@@ -6,6 +6,7 @@ import 'package:flutter_phone_call_state/flutter_phone_call_state.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:plenimind_app/service/contact_service.dart';
+import 'package:plenimind_app/core/auth/permission_manager.dart';
 
 class CallService {
   final _phoneCallStatePlugin = PhoneCallState.instance;
@@ -24,6 +25,14 @@ class CallService {
       final notificationGranted =
           results[Permission.notification]?.isGranted ?? false;
       final phoneGranted = results[Permission.phone]?.isGranted ?? false;
+
+      // ✅ CORREÇÃO: Salvar permissões concedidas
+      if (notificationGranted) {
+        await PermissionManager.setNotificationPermissionGranted(true);
+      }
+      if (phoneGranted) {
+        await PermissionManager.setPhonePermissionGranted(true);
+      }
 
       if (notificationGranted && phoneGranted && Platform.isAndroid) {
         // ✅ CORREÇÃO: Não usar await se retorna void, apenas chamar o método

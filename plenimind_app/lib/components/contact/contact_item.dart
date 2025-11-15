@@ -29,7 +29,7 @@ class ContactItem extends StatelessWidget {
                 )
                 : Text(
                   contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -55,7 +55,7 @@ class ContactItem extends StatelessWidget {
           if (showPriority && contact.priority > 0)
             Text(
               'Prioridade: ${contact.priority}',
-              style: TextStyle(
+              style: const TextStyle(
                 color: Colors.green,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,

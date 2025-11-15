@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
 import 'package:plenimind_app/service/api_client.dart';
 import 'dart:math';
@@ -9,17 +10,17 @@ class AuthService {
 
   // ✅ CORREÇÃO: Método para debug do estado do AuthManager
   void _debugAuthState() {
-    print('🔍 Estado do AuthManager:');
-    print(
+    debugPrint('🔍 Estado do AuthManager:');
+    debugPrint(
       '   Token: ${_authManager.token != null ? "✅ ${_authManager.token!.substring(0, 20)}..." : "❌ Nulo"}',
     );
-    print('   UserId: ${_authManager.userId ?? "❌ Nulo"}');
-    print('   isLoggedIn: ${_authManager.isLoggedIn}');
+    debugPrint('   UserId: ${_authManager.userId ?? "❌ Nulo"}');
+    debugPrint('   isLoggedIn: ${_authManager.isLoggedIn}');
   }
 
   Future<Map<String, dynamic>?> login(String email, String password) async {
     try {
-      print('🔐 Iniciando login para: $email');
+      debugPrint('🔐 Iniciando login para: $email');
       _debugAuthState();
 
       final response = await _apiClient.post('auth/login', {
@@ -27,23 +28,23 @@ class AuthService {
         'password': password,
       });
 
-      print('📡 Response status: ${response.statusCode}');
+      debugPrint('📡 Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final String accessToken = data['access_token'];
         final String refreshToken = data['refresh_token'] ?? '';
 
-        print('✅ Token recebido: ${accessToken.substring(0, 30)}...');
+        debugPrint('✅ Token recebido: ${accessToken.substring(0, 30)}...');
 
         // ✅ CORREÇÃO: Extrair userId do token JWT
         final Map<String, dynamic>? tokenPayload = _decodeJwt(accessToken);
         final String? userId = tokenPayload?['sub'];
 
-        print('👤 UserId extraído do token: $userId');
+        debugPrint('🐤 UserId extraído do token: $userId');
 
         if (userId == null) {
-          print('⚠️ UserId não encontrado no token, gerando um aleatório');
+          debugPrint('⚠️ UserId não encontrado no token, gerando um aleatório');
           // Gerar um userId temporário se não estiver no token
           final random = Random();
           final tempUserId = 'temp_${random.nextInt(10000)}';
@@ -57,11 +58,11 @@ class AuthService {
 
         return data;
       } else {
-        print('❌ Login failed: ${response.statusCode} ${response.body}');
+        debugPrint('❌ Login failed: ${response.statusCode} ${response.body}');
         return null;
       }
     } catch (e) {
-      print('❌ Login error: $e');
+      debugPrint('❌ Login error: $e');
       return null;
     }
   }
@@ -79,7 +80,7 @@ class AuthService {
 
       return payloadMap is Map<String, dynamic> ? payloadMap : null;
     } catch (e) {
-      print('❌ Erro ao decodificar JWT: $e');
+      debugPrint('❌ Erro ao decodificar JWT: $e');
       return null;
     }
   }
@@ -107,9 +108,9 @@ class AuthService {
   String? get token {
     final token = _authManager.token;
     if (token == null) {
-      print('⚠️ AuthService.token: Token NULO no AuthManager');
+      debugPrint('⚠️ AuthService.token: Token NULO no AuthManager');
     } else {
-      print(
+      debugPrint(
         '✅ AuthService.token: Token disponível (${token.substring(0, 20)}...)',
       );
     }
@@ -119,22 +120,22 @@ class AuthService {
   String? get userId {
     final userId = _authManager.userId;
     if (userId == null || userId.isEmpty) {
-      print('⚠️ AuthService.userId: UserId NULO no AuthManager');
+      debugPrint('⚠️ AuthService.userId: UserId NULO no AuthManager');
     } else {
-      print('✅ AuthService.userId: $userId');
+      debugPrint('✅ AuthService.userId: $userId');
     }
     return userId;
   }
 
   bool get isLoggedIn {
     final loggedIn = _authManager.isLoggedIn;
-    print('🔐 AuthService.isLoggedIn: $loggedIn');
+    debugPrint('🔐 AuthService.isLoggedIn: $loggedIn');
     return loggedIn;
   }
 
   Future<void> logout() async {
     await _authManager.clearTokens();
-    print('✅ Logout realizado');
+    debugPrint('✅ Logout realizado');
   }
 
   // ✅ CORREÇÃO: Método para forçar atualização do userId
@@ -146,10 +147,10 @@ class AuthService {
         _authManager.refreshToken ?? '',
         newUserId,
       );
-      print('✅ UserId atualizado no AuthManager: $newUserId');
+      debugPrint('✅ UserId atualizado no AuthManager: $newUserId');
       _debugAuthState();
     } else {
-      print('❌ Não é possível atualizar userId: token nulo');
+      debugPrint('❌ Não é possível atualizar userId: token nulo');
     }
   }
 
@@ -157,7 +158,7 @@ class AuthService {
     try {
       final refreshToken = _authManager.refreshToken;
       if (refreshToken == null) {
-        print('❌ Nenhum refresh token disponível');
+        debugPrint('❌ Nenhum refresh token disponível');
         return null;
       }
 
@@ -176,16 +177,16 @@ class AuthService {
           _authManager.userId ?? '',
         );
 
-        print('✅ Token renovado com sucesso');
+        debugPrint('✅ Token renovado com sucesso');
         return data;
       } else {
-        print(
+        debugPrint(
           '❌ Token refresh failed: ${response.statusCode} ${response.body}',
         );
         return null;
       }
     } catch (e) {
-      print('❌ Token refresh error: $e');
+      debugPrint('❌ Token refresh error: $e');
       return null;
     }
   }

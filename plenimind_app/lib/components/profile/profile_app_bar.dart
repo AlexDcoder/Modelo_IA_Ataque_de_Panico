@@ -33,7 +33,7 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Create your Profile',
+            'Criar seu Perfil',
             style: GoogleFonts.interTight(
               fontSize: 22,
               fontWeight: FontWeight.w600,

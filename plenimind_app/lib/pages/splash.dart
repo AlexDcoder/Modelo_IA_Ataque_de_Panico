@@ -31,7 +31,7 @@ class _SplashPageState extends State<SplashPage> {
                       colors: [
                         theme.colorScheme.primary,
                         theme.colorScheme.error,
-                        theme.colorScheme.tertiary,
+                        theme.colorScheme.secondary,
                       ],
                       stops: const [0, 0.5, 1],
                       begin: const Alignment(-1, -1),

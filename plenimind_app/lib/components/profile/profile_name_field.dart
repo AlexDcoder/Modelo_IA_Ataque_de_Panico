@@ -20,7 +20,7 @@ class ProfileNameField extends StatelessWidget {
         focusNode: focusNode,
         textCapitalization: TextCapitalization.words,
         decoration: InputDecoration(
-          labelText: 'Your Name',
+          labelText: 'Seu Nome',
           labelStyle: GoogleFonts.inter(
             color: Theme.of(context).textTheme.labelMedium?.color,
           ),

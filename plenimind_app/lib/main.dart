@@ -6,8 +6,7 @@ import 'package:plenimind_app/pages/contact.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/theme/colors_pallet.dart';
-import 'package:provider/provider.dart';
-import 'package:plenimind_app/core/auth/register_provider.dart';
+import 'package:plenimind_app/service/notification_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,23 +28,23 @@ class MyApp extends StatelessWidget {
       onSurface: AppColors.onSurface,
     );
 
-    return ChangeNotifierProvider(
-      create: (_) => RegisterProvider(),
-      child: MaterialApp(
-        title: 'PleniMind',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(colorScheme: colorScheme, useMaterial3: true),
-        home: const SplashPage(),
-        routes: {
-          SplashPage.routePath: (context) => const SplashPage(),
-          LoginPage.routePath: (context) => const LoginPage(),
-          ProfilePage.routePath: (context) => const ProfilePage(),
-          ContactPage.routePath: (context) => const ContactPage(),
-          TermsConditionsScreen.routePath:
-              (context) => const TermsConditionsScreen(),
-          StatusPage.routePath: (context) => const StatusPage(),
-        },
-      ),
+    // Inicializar serviços
+    NotificationService().initialize();
+
+    return MaterialApp(
+      title: 'PleniMind',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorScheme: colorScheme, useMaterial3: true),
+      home: const SplashPage(),
+      routes: {
+        SplashPage.routePath: (context) => const SplashPage(),
+        LoginPage.routePath: (context) => const LoginPage(),
+        ProfilePage.routePath: (context) => const ProfilePage(),
+        ContactPage.routePath: (context) => const ContactPage(),
+        TermsConditionsScreen.routePath:
+            (context) => const TermsConditionsScreen(),
+        StatusPage.routePath: (context) => const StatusPage(),
+      },
     );
   }
 }

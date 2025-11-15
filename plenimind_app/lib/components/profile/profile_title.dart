@@ -7,7 +7,7 @@ class ProfileTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Create your Profile',
+      'Criar seu Perfil',
       style: GoogleFonts.interTight(
         fontSize: 22,
         fontWeight: FontWeight.w600,

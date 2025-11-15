@@ -4,6 +4,7 @@ import 'package:plenimind_app/components/terms_conditions/content.dart';
 import 'package:plenimind_app/components/terms_conditions/continue_button.dart';
 import 'package:plenimind_app/components/terms_conditions/custom_app_bar.dart';
 import 'package:plenimind_app/components/terms_conditions/header.dart';
+import 'package:plenimind_app/core/auth/permission_manager.dart';
 
 class TermsConditionsScreen extends StatefulWidget {
   static const String routePath = '/terms-conditions';
@@ -11,7 +12,7 @@ class TermsConditionsScreen extends StatefulWidget {
   const TermsConditionsScreen({super.key});
 
   @override
-  _TermsConditionsScreenState createState() => _TermsConditionsScreenState();
+  State<TermsConditionsScreen> createState() => _TermsConditionsScreenState();
 }
 
 class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
@@ -23,7 +24,12 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
     });
   }
 
-  void _onContinuePressed() {
+  Future<void> _onContinuePressed() async {
+    // ✅ CORREÇÃO: Salvar que o usuário aceitou os termos
+    if (_isAccepted) {
+      await PermissionManager.setTermsAccepted(true);
+      debugPrint('✅ Termos de uso aceitos e salvos');
+    }
     Navigator.of(context).pop(true);
   }
 

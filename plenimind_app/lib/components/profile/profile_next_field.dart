@@ -22,7 +22,7 @@ class ProfileNextButton extends StatelessWidget {
             ),
           ),
           child: Text(
-            'Next',
+            'Próximo',
             style: GoogleFonts.interTight(
               fontSize: 16,
               fontWeight: FontWeight.w600,

@@ -34,9 +34,9 @@ class SignInTab extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             LoginFormHeader(
-              title: 'Welcome Back',
+              title: 'Bem-vindo de Volta',
               subtitle:
-                  'Fill out the information below to access your account.',
+                  'Preencha as informações abaixo para acessar sua conta.',
             ),
             const SizedBox(height: 24),
             LoginTextField(
@@ -49,14 +49,14 @@ class SignInTab extends StatelessWidget {
             LoginTextField(
               controller: passwordController,
               focusNode: passwordFocusNode,
-              labelText: 'Password',
+              labelText: 'Senha',
               isPassword: true,
               passwordVisible: passwordVisible,
               onPasswordVisibilityChanged: onPasswordVisibilityChanged,
             ),
             const SizedBox(height: 24),
             LoginButton(
-              text: 'Sign In',
+              text: 'Entrar',
               isLoading: isLoading,
               onPressed: onSubmit,
             ),

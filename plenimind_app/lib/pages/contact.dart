@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/pages/terms_conditions.dart';
+import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:plenimind_app/pages/status_page.dart';
+import 'package:plenimind_app/service/user_service.dart';
+import 'package:plenimind_app/schemas/request/personal_data.dart';
 import 'package:plenimind_app/core/auth/auth_service.dart';
-import 'package:provider/provider.dart';
-
-import 'package:plenimind_app/core/auth/register_provider.dart';
+import 'package:plenimind_app/core/auth/permission_manager.dart';
 
 class ContactPage extends StatefulWidget {
   static const String routePath = '/contacts';
@@ -25,54 +26,74 @@ class _ContactPageState extends State<ContactPage> {
   bool _isLoading = true;
   bool _permissionDenied = false;
   bool _termsAccepted = false;
-  String? _errorMessage;
-  String _userId = "";
+
+  late String _email;
+  late String _password;
+  late String _username;
+  late String _detectionTime;
+
+  final UserService _userService = UserService();
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
     super.initState();
+    _restorePermissionsIfAccepted();
     _loadData();
     _checkTermsStatus();
-    _initUser();
   }
 
-  Future<void> _initUser() async {
-    final authService = AuthService();
-    final user = await authService.getCurrentUser();
+  Future<void> _restorePermissionsIfAccepted() async {
+    // ✅ CORREÇÃO: Se o usuário já tinha aceito as permissões, restaurá-las automaticamente
+    final permissionsStatus = await PermissionManager.getAllPermissionsStatus();
 
-    if (user != null) {
-      setState(() {
-        _userId = user["uid"]; 
-      });
-    } else {
-      _showSnackBar("Erro ao obter dados do usuário.");
+    if (permissionsStatus['contacts_permission'] == true) {
+      debugPrint('✅ Restaurando permissão de contatos aceita anteriormente');
+      // A permissão será pedida normalmente quando necessário em getDeviceContacts()
+    }
+
+    if (permissionsStatus['notification_permission'] == true) {
+      debugPrint('✅ Notificações já foram permitidas anteriormente');
+    }
+
+    if (permissionsStatus['phone_permission'] == true) {
+      debugPrint('✅ Chamadas telefônicas já foram permitidas anteriormente');
     }
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null) {
+      _email = args['email'] ?? '';
+      _password = args['password'] ?? '';
+      _username = args['username'] ?? '';
+      _detectionTime = args['detectionTime'] ?? '00:30:00';
+    }
+  }
 
   Future<void> _checkTermsStatus() async {
-    // Verifica se já existem contatos salvos (indica que termos foram aceitos)
-    final emergencyContacts = await ContactService.getEmergencyContacts(
-      _userId,
-    );
+    // ✅ CORREÇÃO: Verificar se os termos foram aceitos (persistente mesmo após deletar conta)
+    final termsAccepted = await PermissionManager.getTermsAccepted();
     setState(() {
-      _termsAccepted = emergencyContacts.isNotEmpty;
+      _termsAccepted = termsAccepted;
     });
   }
 
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
     });
 
     try {
       // Carrega contatos salvos como emergência
       final emergencyContacts = await ContactService.getEmergencyContacts(
-        _userId,
+        _email,
       );
 
-      // Carrega contatos do celular (ContactService já pede permissão)
+      // Carrega contatos do celular
       final deviceContacts = await ContactService.getDeviceContacts();
 
       final emergencyPhones = emergencyContacts.map((c) => c.phone).toSet();
@@ -99,9 +120,6 @@ class _ContactPageState extends State<ContactPage> {
           _deviceContacts = [];
         });
       } else {
-        setState(() {
-          _errorMessage = 'Erro ao carregar contatos: $e';
-        });
         _showSnackBar('Erro: $e');
       }
     } finally {
@@ -112,7 +130,7 @@ class _ContactPageState extends State<ContactPage> {
   Future<void> _navigateToTerms() async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (context) => TermsConditionsScreen()),
+      MaterialPageRoute(builder: (context) => const TermsConditionsScreen()),
     );
 
     if (result == true) {
@@ -120,6 +138,14 @@ class _ContactPageState extends State<ContactPage> {
         _termsAccepted = true;
       });
       await _saveSelection();
+    } else {
+      // 📌 Quando volta da tela de Termos sem aceitar, limpar seleção de contatos
+      debugPrint(
+        '⚠️ Usuário voltou da tela de Termos sem aceitar. Limpando seleção.',
+      );
+      setState(() {
+        _selectedContactIds.clear();
+      });
     }
   }
 
@@ -153,39 +179,79 @@ class _ContactPageState extends State<ContactPage> {
               priority: index + 1,
             );
           }).toList();
-      
-      await ContactService.saveEmergencyContacts(contactsWithPriority, _userId);
 
+      // Converter para DTO para envio à API
+      final emergencyContactsDTO =
+          contactsWithPriority.map((contact) => contact.toDTO()).toList();
 
-      _showSnackBar(
-        '${contactsWithPriority.length} contatos de emergência salvos!',
+      // Criar usuário com todos os dados
+      final userData = UserPersonalData(
+        username: _username,
+        email: _email,
+        password: _password,
+        detectionTime: _detectionTime,
+        emergencyContacts: emergencyContactsDTO,
       );
 
-      final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
+      // Registrar usuário no backend
+      final userResponse = await _userService.createUser(userData);
 
-      final selectedAsMap = selected.map((c) => {
-        "name": c.name,
-        "phone": c.phone,
-      }).toList();
+      if (userResponse != null) {
+        // Salvar contatos localmente também
+        await ContactService.saveEmergencyContacts(
+          contactsWithPriority,
+          _email,
+        );
 
-      registerProvider.setEmergencyContacts(selectedAsMap);
-      
-      final registerData = registerProvider.data;
-      final authService = AuthService();
+        // 📌 OPÇÃO A: Verificar se tokens foram retornados na resposta de criação
+        // (Por enquanto, o backend não retorna tokens, então fazemos login automático)
 
-      if (!registerData.isComplete()) {
-        _showSnackBar("Dados incompletos para finalizar o cadastro.");
-        return;
+        // 📌 OPÇÃO B: Fazer login automático com tratamento de erro
+        try {
+          debugPrint('🔐 Tentando autenticação automática após cadastro...');
+          final loginResult = await _authService.login(_email, _password);
+
+          if (loginResult != null) {
+            debugPrint('✅ Usuário autenticado automaticamente após cadastro');
+            _showSnackBar('Conta criada com sucesso!');
+
+            if (mounted) {
+              Navigator.pushReplacementNamed(context, StatusPage.routePath);
+            }
+          } else {
+            // ⚠️ OPÇÃO B: Feedback UX - Login automático falhou
+            debugPrint('❌ Autenticação automática falhou após cadastro');
+            _showSnackBar(
+              'Conta criada, mas login automático falhou. Faça login manualmente.',
+            );
+
+            if (mounted) {
+              // Redirecionar para tela de login com mensagem
+              Navigator.pushReplacementNamed(
+                context,
+                LoginPage.routePath,
+                arguments: {'email': _email, 'autoLoginFailed': true},
+              );
+            }
+          }
+        } catch (e) {
+          // ⚠️ OPÇÃO B: Erro durante login automático
+          debugPrint('❌ Erro na autenticação automática: $e');
+          _showSnackBar(
+            'Conta criada, mas houve erro ao autenticar. Tente fazer login.',
+          );
+
+          if (mounted) {
+            Navigator.pushReplacementNamed(
+              context,
+              LoginPage.routePath,
+              arguments: {'email': _email, 'autoLoginFailed': true},
+            );
+          }
+        }
+      } else {
+        _showSnackBar('Erro ao criar conta. Tente novamente.');
       }
-
-      await authService.register(registerData);
-
-      _showSnackBar("Conta criada com sucesso!");
-      registerProvider.clear();
-
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, StatusPage.routePath);
-      } 
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e');
     }
@@ -225,7 +291,7 @@ class _ContactPageState extends State<ContactPage> {
             Icon(
               Icons.lock_person,
               size: 56,
-              color: colorScheme.onSurface.withOpacity(0.6),
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             const SizedBox(height: 12),
             Text(
@@ -240,7 +306,9 @@ class _ContactPageState extends State<ContactPage> {
             Text(
               'Ative a permissão em Configurações para permitir que o app leia seus contatos.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: colorScheme.onSurface.withOpacity(0.7)),
+              style: TextStyle(
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -289,7 +357,7 @@ class _ContactPageState extends State<ContactPage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
-                color: colorScheme.onSurface.withOpacity(0.7),
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.4,
               ),
             ),
@@ -343,7 +411,9 @@ class _ContactPageState extends State<ContactPage> {
                   if (_emergencyContacts.isNotEmpty) ...[
                     Container(
                       width: double.infinity,
-                      color: colorScheme.primaryContainer.withOpacity(0.3),
+                      color: colorScheme.primaryContainer.withValues(
+                        alpha: 0.3,
+                      ),
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,7 +440,7 @@ class _ContactPageState extends State<ContactPage> {
                               isDisabled: true,
                               showPriority: true,
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     ),
@@ -407,8 +477,8 @@ class _ContactPageState extends State<ContactPage> {
                                     Icon(
                                       Icons.contacts,
                                       size: 64,
-                                      color: colorScheme.onSurface.withOpacity(
-                                        0.6,
+                                      color: colorScheme.onSurface.withValues(
+                                        alpha: 0.6,
                                       ),
                                     ),
                                     const SizedBox(height: 8),

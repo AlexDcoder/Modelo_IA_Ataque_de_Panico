@@ -6,10 +6,10 @@ class TermsAcceptance extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   const TermsAcceptance({
-    Key? key,
+    super.key,
     required this.isAccepted,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +18,7 @@ class TermsAcceptance extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: colorScheme.background,
+        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: colorScheme.outline.withValues(alpha: 0.3),
@@ -33,7 +33,7 @@ class TermsAcceptance extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: colorScheme.onBackground,
+            color: colorScheme.onSurface,
           ),
         ),
         activeColor: AppColors.success,

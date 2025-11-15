@@ -4,8 +4,6 @@ import 'package:plenimind_app/components/login/login_header.dart';
 import 'package:plenimind_app/pages/profile.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/core/auth/auth_service.dart';
-import 'package:provider/provider.dart';
-import 'package:plenimind_app/core/auth/register_provider.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -34,7 +32,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _isSignUpLoading = false;
   bool _isSignInLoading = false;
 
-  final _authService = AuthService();
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -59,41 +57,53 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Future<void> _handleSignUp() async {
     if (_emailCreateController.text.isEmpty ||
         _passwordCreateController.text.isEmpty) {
-      _showSnackBar('Please fill in all fields');
+      _showSnackBar('Por favor, preencha todos os campos');
       return;
     }
 
     setState(() => _isSignUpLoading = true);
 
-    final registerProvider = Provider.of<RegisterProvider>(context, listen: false);
-    registerProvider.setEmailAndPassword(
-      _emailCreateController.text,
-      _passwordCreateController.text,
-    );
-
-    Navigator.pushReplacementNamed(context, ProfilePage.routePath);
+    try {
+      // Navegar para ProfilePage passando email e senha
+      Navigator.pushNamed(
+        context,
+        ProfilePage.routePath,
+        arguments: {
+          'email': _emailCreateController.text,
+          'password': _passwordCreateController.text,
+        },
+      );
+    } catch (e) {
+      _showSnackBar('Erro: ${e.toString()}');
+    } finally {
+      setState(() => _isSignUpLoading = false);
+    }
   }
 
   Future<void> _handleSignIn() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showSnackBar('Please fill in all fields');
+      _showSnackBar('Por favor, preencha todos os campos');
       return;
     }
 
     setState(() => _isSignInLoading = true);
 
     try {
-      final success = await _authService.login(
+      final result = await _authService.login(
         _emailController.text,
         _passwordController.text,
       );
 
-      if (success) {
-        _showSnackBar('Signed in successfully!');
+      if (!mounted) return;
+
+      if (result != null) {
+        _showSnackBar('Login realizado com sucesso!');
         Navigator.pushReplacementNamed(context, StatusPage.routePath);
+      } else {
+        _showSnackBar('Falha no login. Verifique suas credenciais.');
       }
     } catch (e) {
-      _showSnackBar('Sign in failed: ${e.toString()}');
+      _showSnackBar('Erro de conexão: ${e.toString()}');
     } finally {
       setState(() => _isSignInLoading = false);
     }
@@ -123,7 +133,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     children: [
                       AnimatedLoginCard(
                         tabController: _tabController,
-                        // Create Account Props
                         emailCreateController: _emailCreateController,
                         passwordCreateController: _passwordCreateController,
                         emailCreateFocusNode: _emailCreateFocusNode,
@@ -134,7 +143,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         },
                         isSignUpLoading: _isSignUpLoading,
                         onSignUp: _handleSignUp,
-                        // Sign In Props
                         emailController: _emailController,
                         passwordController: _passwordController,
                         emailFocusNode: _emailFocusNode,

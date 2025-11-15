@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:plenimind_app/schemas/request/vital_data.dart';
+import 'package:plenimind_app/core/auth/auth_manager.dart';
 import 'package:plenimind_app/service/user_service.dart';
+import 'package:plenimind_app/service/vital_data_service.dart';
+import 'package:plenimind_app/service/notification_service.dart';
+import 'package:plenimind_app/components/app_drawer.dart';
 
 class StatusPage extends StatefulWidget {
   static const String routePath = '/status';
@@ -12,6 +17,9 @@ class StatusPage extends StatefulWidget {
 
 class _StatusPageState extends State<StatusPage> {
   final UserService _userService = UserService();
+  final VitalDataService _vitalDataService = VitalDataService();
+  final NotificationService _notificationService = NotificationService();
+  final AuthManager _authManager = AuthManager();
 
   UserVitalData _vitalData = UserVitalData(
     heartRate: 72.0,
@@ -23,18 +31,74 @@ class _StatusPageState extends State<StatusPage> {
 
   bool _isLoading = true;
   String _errorMessage = '';
-  String _userEmail = 'usuario@exemplo.com'; // Email temporário
+  String _userEmail = 'Carregando...';
+  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    // Iniciar polling a cada 30 segundos
+    _pollingTimer = Timer.periodic(const Duration(seconds: 30), (Timer t) {
+      _loadUserData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
     try {
-      // TODO: Buscar dados reais da API quando estiver integrado
-      await Future.delayed(const Duration(seconds: 2));
+      // ✅ CORREÇÃO: Resetar mensagem de erro antes de carregar
+      setState(() {
+        _errorMessage = '';
+      });
+
+      // ✅ CORREÇÃO: Carregar tokens de forma assíncrona
+      await _authManager.reloadTokens();
+
+      final token = _authManager.token;
+      final userId = _authManager.userId;
+
+      if (token == null || userId == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      // Buscar dados do usuário
+      final userResponse = await _userService.getCurrentUser();
+      if (userResponse != null) {
+        setState(() {
+          _userEmail = userResponse.email;
+        });
+      }
+
+      // Buscar dados vitais reais
+      final vitalDataResponse = await _vitalDataService.getUserVitalData(
+        userId,
+        token,
+      );
+
+      if (vitalDataResponse != null) {
+        setState(() {
+          _vitalData = UserVitalData(
+            heartRate: vitalDataResponse.heartRate,
+            respirationRate: vitalDataResponse.respirationRate,
+            accelStd: vitalDataResponse.accelStd,
+            spo2: vitalDataResponse.spo2,
+            stressLevel: vitalDataResponse.stressLevel,
+          );
+        });
+
+        // Processar com IA para notificações
+        await _notificationService.processVitalDataAndNotify(
+          userId,
+          _vitalData,
+          token,
+        );
+      }
 
       setState(() {
         _isLoading = false;
@@ -55,6 +119,7 @@ class _StatusPageState extends State<StatusPage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
+      drawer: AppDrawer(userEmail: _userEmail),
       body:
           _isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -140,7 +205,7 @@ class _StatusPageState extends State<StatusPage> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 28),

@@ -1,6 +1,6 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
-import 'package:plenimind_app/core/auth/auth_service.dart';
 import 'package:plenimind_app/service/api_client.dart';
 import 'package:plenimind_app/schemas/request/personal_data.dart';
 import 'package:plenimind_app/schemas/response/user_personal_request.dart';
@@ -14,7 +14,7 @@ class UserService {
     try {
       final token = _authManager.token;
       if (token == null) {
-        print('❌ Nenhum token disponível para getAllUsers');
+        debugPrint('❌ Nenhum token disponível para getAllUsers');
         return null;
       }
 
@@ -23,13 +23,13 @@ class UserService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        print(
+        debugPrint(
           '❌ Get all users failed: ${response.statusCode} ${response.body}',
         );
         return null;
       }
     } catch (e) {
-      print('❌ Get all users error: $e');
+      debugPrint('❌ Get all users error: $e');
       return null;
     }
   }
@@ -37,15 +37,15 @@ class UserService {
   // ✅ NOVO: GET /users/me → Dados do usuário atual
   Future<UserPersonalDataResponse?> getCurrentUser() async {
     try {
-      print('👤 Buscando usuário atual...');
+      debugPrint('🐤 Buscando usuário atual...');
 
       final token = _authManager.token;
       if (token == null) {
-        print('❌ getCurrentUser: Token NULO no AuthManager');
+        debugPrint('❌ getCurrentUser: Token NULO no AuthManager');
         return null;
       }
 
-      print(
+      debugPrint(
         '✅ getCurrentUser: Token disponível (${token.substring(0, 20)}...)',
       );
 
@@ -55,16 +55,16 @@ class UserService {
         final json = jsonDecode(response.body);
         final userResponse = UserPersonalDataResponse.fromJson(json);
 
-        print('✅ Rota /me funcionou - UserId: ${userResponse.uid}');
+        debugPrint('✅ Rota /me funcionou - UserId: ${userResponse.uid}');
         return userResponse;
       } else {
-        print(
+        debugPrint(
           '❌ getCurrentUser failed: ${response.statusCode} ${response.body}',
         );
         return null;
       }
     } catch (e) {
-      print('❌ getCurrentUser error: $e');
+      debugPrint('❌ getCurrentUser error: $e');
       return null;
     }
   }
@@ -74,7 +74,7 @@ class UserService {
     try {
       final token = _authManager.token;
       if (token == null) {
-        print('❌ Nenhum token disponível para getUserPublic');
+        debugPrint('❌ Nenhum token disponível para getUserPublic');
         return null;
       }
 
@@ -84,13 +84,13 @@ class UserService {
         final json = jsonDecode(response.body);
         return UserPersonalDataResponse.fromJson(json);
       } else {
-        print(
+        debugPrint(
           '❌ Get user public failed: ${response.statusCode} ${response.body}',
         );
         return null;
       }
     } catch (e) {
-      print('❌ Get user public error: $e');
+      debugPrint('❌ Get user public error: $e');
       return null;
     }
   }
@@ -98,22 +98,50 @@ class UserService {
   // POST /users/ → Cria novo usuário
   Future<UserPersonalDataResponse?> createUser(UserPersonalData user) async {
     try {
-      print('👤 Criando usuário: ${user.email}');
+      debugPrint('🐤 Criando usuário: ${user.email}');
 
       final response = await _apiClient.post('users', user.toJson());
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final json = jsonDecode(response.body);
+
+        // 📌 OPÇÃO C: Log detalhado da resposta completa
+        debugPrint('📤 [CREATE_USER] Response Status: ${response.statusCode}');
+        debugPrint('📤 [CREATE_USER] Response Headers: ${response.headers}');
+        debugPrint('📤 [CREATE_USER] Response Body Completo: ${response.body}');
+        debugPrint('📤 [CREATE_USER] Parsed JSON: $json');
+
+        // Verificar se há tokens na resposta
+        if (json.containsKey('access_token') || json.containsKey('token')) {
+          debugPrint(
+            '🔑 [CREATE_USER] ⚠️ ATENÇÃO: Tokens encontrados na resposta de criação!',
+          );
+          debugPrint(
+            '🔑 [CREATE_USER] Access Token: ${json['access_token']?.substring(0, 20) ?? 'N/A'}...',
+          );
+          debugPrint(
+            '🔑 [CREATE_USER] Refresh Token: ${json['refresh_token']?.substring(0, 20) ?? 'N/A'}...',
+          );
+        } else {
+          debugPrint(
+            '🔑 [CREATE_USER] Nenhum token na resposta de criação (esperado fazer login depois)',
+          );
+        }
+
         final userResponse = UserPersonalDataResponse.fromJson(json);
 
-        print('✅ Usuário criado - UID: ${userResponse.uid}');
+        debugPrint('✅ Usuário criado - UID: ${userResponse.uid}');
         return userResponse;
       } else {
-        print('❌ Create user failed: ${response.statusCode} ${response.body}');
+        debugPrint('❌ Create user failed: ${response.statusCode}');
+        if (response.headers.containsKey('location')) {
+          debugPrint('➡️ Location header: ${response.headers['location']}');
+        }
+        debugPrint('❌ Body: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('❌ Create user error: $e');
+      debugPrint('❌ Create user error: $e');
       return null;
     }
   }
@@ -126,7 +154,7 @@ class UserService {
     try {
       final token = _authManager.token;
       if (token == null) {
-        print('❌ Nenhum token disponível para updateUser');
+        debugPrint('❌ Nenhum token disponível para updateUser');
         return null;
       }
 
@@ -140,11 +168,13 @@ class UserService {
         final json = jsonDecode(response.body);
         return UserPersonalDataResponse.fromJson(json);
       } else {
-        print('❌ Update user failed: ${response.statusCode} ${response.body}');
+        debugPrint(
+          '❌ Update user failed: ${response.statusCode} ${response.body}',
+        );
         return null;
       }
     } catch (e) {
-      print('❌ Update user error: $e');
+      debugPrint('❌ Update user error: $e');
       return null;
     }
   }
@@ -154,7 +184,7 @@ class UserService {
     try {
       final token = _authManager.token;
       if (token == null) {
-        print('❌ Nenhum token disponível para deleteUser');
+        debugPrint('❌ Nenhum token disponível para deleteUser');
         return false;
       }
 
@@ -164,14 +194,16 @@ class UserService {
       );
 
       if (response.statusCode == 200) {
-        print('✅ User deleted successfully');
+        debugPrint('✅ User deleted successfully');
         return true;
       } else {
-        print('❌ Delete user failed: ${response.statusCode} ${response.body}');
+        debugPrint(
+          '❌ Delete user failed: ${response.statusCode} ${response.body}',
+        );
         return false;
       }
     } catch (e) {
-      print('❌ Delete user error: $e');
+      debugPrint('❌ Delete user error: $e');
       return false;
     }
   }

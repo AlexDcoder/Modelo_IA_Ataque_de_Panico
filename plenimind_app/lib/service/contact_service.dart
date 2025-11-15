@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:plenimind_app/schemas/dto/emergency_contact_dto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:fast_contacts/fast_contacts.dart';
+import 'package:plenimind_app/core/auth/permission_manager.dart';
 
 class ContactService {
   static String _getStorageKey(String userId) {
@@ -21,7 +23,7 @@ class ContactService {
         final List jsonList = json.decode(savedData);
         return jsonList.map((json) => EmergencyContact.fromJson(json)).toList();
       } catch (e) {
-        print('❌ Erro ao decodificar contatos salvos: $e');
+        debugPrint('❌ Erro ao decodificar contatos salvos: $e');
         return [];
       }
     }
@@ -37,9 +39,9 @@ class ContactService {
       final prefs = await SharedPreferences.getInstance();
       final jsonList = contacts.map((c) => c.toJson()).toList();
       await prefs.setString(_getStorageKey(userId), json.encode(jsonList));
-      print('✅ ${contacts.length} contatos de emergência salvos');
+      debugPrint('✅ ${contacts.length} contatos de emergência salvos');
     } catch (e) {
-      print('❌ Erro ao salvar contatos: $e');
+      debugPrint('❌ Erro ao salvar contatos: $e');
       throw Exception('Erro ao salvar contatos de emergência');
     }
   }
@@ -73,9 +75,18 @@ class ContactService {
       var status = await Permission.contacts.status;
       if (!status.isGranted) {
         status = await Permission.contacts.request();
+
+        // ✅ CORREÇÃO: Salvar que a permissão de contatos foi concedida
+        if (status.isGranted) {
+          await PermissionManager.setContactsPermissionGranted(true);
+        }
+
         if (!status.isGranted) {
           throw Exception('Permissão de contatos negada');
         }
+      } else {
+        // ✅ CORREÇÃO: Se já tinha permissão, marcar como concedida
+        await PermissionManager.setContactsPermissionGranted(true);
       }
 
       final fields = ContactField.values.toList();
@@ -101,7 +112,7 @@ class ContactService {
 
       return contacts; // ✅ Explicit return
     } catch (e) {
-      print('❌ Erro ao buscar contatos do dispositivo: $e');
+      debugPrint('❌ Erro ao buscar contatos do dispositivo: $e');
       throw Exception('Erro ao acessar contatos do dispositivo');
     }
   }
@@ -115,9 +126,9 @@ class ContactService {
       final contacts = await getEmergencyContacts(userId);
       final updated = contacts.where((c) => c.id != contactId).toList();
       await saveEmergencyContacts(updated, userId);
-      print('✅ Contato removido com sucesso');
+      debugPrint('✅ Contato removido com sucesso');
     } catch (e) {
-      print('❌ Erro ao remover contato: $e');
+      debugPrint('❌ Erro ao remover contato: $e');
       throw Exception('Erro ao remover contato de emergência');
     }
   }

@@ -4,8 +4,7 @@ class TermsSection extends StatelessWidget {
   final String title;
   final String content;
 
-  const TermsSection({Key? key, required this.title, required this.content})
-    : super(key: key);
+  const TermsSection({super.key, required this.title, required this.content});
 
   @override
   Widget build(BuildContext context) {

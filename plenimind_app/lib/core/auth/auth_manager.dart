@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthManager {
@@ -13,6 +14,11 @@ class AuthManager {
     _loadTokens();
   }
 
+  // ✅ CORREÇÃO: Método público para recarregar tokens
+  Future<void> reloadTokens() async {
+    await _loadTokens();
+  }
+
   // ✅ CORREÇÃO: Carregar tokens de forma síncrona no construtor
   Future<void> _loadTokens() async {
     try {
@@ -21,11 +27,11 @@ class AuthManager {
       _refreshToken = prefs.getString(_refreshTokenKey);
       _userId = prefs.getString(_userIdKey);
 
-      print('🔄 AuthManager carregado:');
-      print('   Token: ${_token != null ? "✅ Disponível" : "❌ Nulo"}');
-      print('   UserId: ${_userId ?? "❌ Nulo"}');
+      debugPrint('🔄 AuthManager carregado:');
+      debugPrint('   Token: ${_token != null ? "✅ Disponível" : "❌ Nulo"}');
+      debugPrint('   UserId: ${_userId ?? "❌ Nulo"}');
     } catch (e) {
-      print('❌ Erro ao carregar tokens: $e');
+      debugPrint('❌ Erro ao carregar tokens: $e');
     }
   }
 
@@ -52,11 +58,11 @@ class AuthManager {
       await prefs.setString(_refreshTokenKey, refreshToken);
       await prefs.setString(_userIdKey, userId);
 
-      print('💾 Tokens salvos no AuthManager:');
-      print('   Token: ${token.substring(0, 20)}...');
-      print('   UserId: $userId');
+      debugPrint('💾 Tokens salvos no AuthManager:');
+      debugPrint('   Token: ${token.substring(0, 20)}...');
+      debugPrint('   UserId: $userId');
     } catch (e) {
-      print('❌ Erro ao salvar tokens: $e');
+      debugPrint('❌ Erro ao salvar tokens: $e');
     }
   }
 
@@ -70,6 +76,6 @@ class AuthManager {
     await prefs.remove(_refreshTokenKey);
     await prefs.remove(_userIdKey);
 
-    print('🗑️ Tokens removidos do AuthManager');
+    debugPrint('🗑️ Tokens removidos do AuthManager');
   }
 }
