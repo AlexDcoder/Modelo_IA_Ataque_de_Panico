@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
+import 'package:plenimind_app/schemas/dto/emergency_contact_dto.dart';
 import 'package:plenimind_app/service/api_client.dart';
 import 'package:plenimind_app/schemas/request/personal_data.dart';
 import 'package:plenimind_app/schemas/response/user_personal_request.dart';
@@ -34,7 +35,7 @@ class UserService {
     }
   }
 
-  // ✅ NOVO: GET /users/me → Dados do usuário atual
+  // ✅ CORREÇÃO: GET /users/me → Dados do usuário atual
   Future<UserPersonalDataResponse?> getCurrentUser() async {
     try {
       debugPrint('🐤 Buscando usuário atual...');
@@ -105,28 +106,8 @@ class UserService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final json = jsonDecode(response.body);
 
-        // 📌 OPÇÃO C: Log detalhado da resposta completa
         debugPrint('📤 [CREATE_USER] Response Status: ${response.statusCode}');
-        debugPrint('📤 [CREATE_USER] Response Headers: ${response.headers}');
         debugPrint('📤 [CREATE_USER] Response Body Completo: ${response.body}');
-        debugPrint('📤 [CREATE_USER] Parsed JSON: $json');
-
-        // Verificar se há tokens na resposta
-        if (json.containsKey('access_token') || json.containsKey('token')) {
-          debugPrint(
-            '🔑 [CREATE_USER] ⚠️ ATENÇÃO: Tokens encontrados na resposta de criação!',
-          );
-          debugPrint(
-            '🔑 [CREATE_USER] Access Token: ${json['access_token']?.substring(0, 20) ?? 'N/A'}...',
-          );
-          debugPrint(
-            '🔑 [CREATE_USER] Refresh Token: ${json['refresh_token']?.substring(0, 20) ?? 'N/A'}...',
-          );
-        } else {
-          debugPrint(
-            '🔑 [CREATE_USER] Nenhum token na resposta de criação (esperado fazer login depois)',
-          );
-        }
 
         final userResponse = UserPersonalDataResponse.fromJson(json);
 
@@ -134,9 +115,6 @@ class UserService {
         return userResponse;
       } else {
         debugPrint('❌ Create user failed: ${response.statusCode}');
-        if (response.headers.containsKey('location')) {
-          debugPrint('➡️ Location header: ${response.headers['location']}');
-        }
         debugPrint('❌ Body: ${response.body}');
         return null;
       }
@@ -146,7 +124,7 @@ class UserService {
     }
   }
 
-  // PUT /users/{uid} → Atualiza usuário
+  // ✅ CORREÇÃO: PUT /users/{uid} → Atualiza usuário (completo)
   Future<UserPersonalDataResponse?> updateUser(
     String uid,
     UserPersonalData user,
@@ -177,6 +155,110 @@ class UserService {
       debugPrint('❌ Update user error: $e');
       return null;
     }
+  }
+
+  // ✅ NOVO: Atualização parcial usando PUT com dados existentes
+  Future<UserPersonalDataResponse?> updateUserPartial(
+    String uid,
+    Map<String, dynamic> partialData,
+  ) async {
+    try {
+      final token = _authManager.token;
+      if (token == null) {
+        debugPrint('❌ Nenhum token disponível para updateUserPartial');
+        return null;
+      }
+
+      // Primeiro buscar dados atuais do usuário
+      final currentUser = await getCurrentUser();
+      if (currentUser == null) {
+        debugPrint('❌ Não foi possível obter dados atuais do usuário');
+        return null;
+      }
+
+      // Converter currentUser para UserPersonalData (mantendo dados existentes)
+      final currentUserData = UserPersonalData(
+        username: currentUser.username,
+        email: currentUser.email,
+        password: '', // Senha não é retornada, manter vazia
+        detectionTime: currentUser.detectionTime,
+        emergencyContacts: currentUser.emergencyContacts,
+      );
+
+      // Mesclar dados atuais com dados parciais
+      final mergedData = _mergeUserData(currentUserData, partialData);
+
+      // Fazer PUT com dados completos
+      final response = await _apiClient.authenticatedPut(
+        'users/$uid',
+        mergedData.toJson(),
+        token,
+      );
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        return UserPersonalDataResponse.fromJson(json);
+      } else {
+        debugPrint(
+          '❌ Update user partial failed: ${response.statusCode} ${response.body}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Update user partial error: $e');
+      return null;
+    }
+  }
+
+  // ✅ NOVO: Métodos específicos para atualizações parciais
+  Future<UserPersonalDataResponse?> updateUserPassword(
+    String uid,
+    String newPassword,
+  ) async {
+    return await updateUserPartial(uid, {'password': newPassword});
+  }
+
+  Future<UserPersonalDataResponse?> updateUserProfile(
+    String uid,
+    String username,
+    String email,
+  ) async {
+    return await updateUserPartial(uid, {'username': username, 'email': email});
+  }
+
+  Future<UserPersonalDataResponse?> updateUserDetectionTime(
+    String uid,
+    String detectionTime,
+  ) async {
+    return await updateUserPartial(uid, {'detection_time': detectionTime});
+  }
+
+  Future<UserPersonalDataResponse?> updateUserEmergencyContacts(
+    String uid,
+    List<EmergencyContactDTO> emergencyContacts,
+  ) async {
+    return await updateUserPartial(uid, {
+      'emergency_contact': emergencyContacts.map((e) => e.toJson()).toList(),
+    });
+  }
+
+  // ✅ NOVO: Método para mesclar dados do usuário
+  UserPersonalData _mergeUserData(
+    UserPersonalData currentData,
+    Map<String, dynamic> partialData,
+  ) {
+    return UserPersonalData(
+      username: partialData['username'] ?? currentData.username,
+      email: partialData['email'] ?? currentData.email,
+      password: partialData['password'] ?? currentData.password,
+      detectionTime: partialData['detection_time'] ?? currentData.detectionTime,
+      emergencyContacts:
+          partialData['emergency_contact'] != null
+              ? (partialData['emergency_contact'] as List)
+                  .map((e) => EmergencyContactDTO.fromJson(e))
+                  .toList()
+              : currentData.emergencyContacts,
+    );
   }
 
   // DELETE /users/{uid} → Remove usuário

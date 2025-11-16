@@ -112,6 +112,7 @@ class _StatusPageState extends State<StatusPage> {
     }
   }
 
+  // No método _loadVitalDataAndProcess, garantir que está passando o contexto corretamente:
   Future<void> _loadVitalDataAndProcess() async {
     try {
       await _authManager.reloadTokens();
@@ -137,12 +138,16 @@ class _StatusPageState extends State<StatusPage> {
       // ✅ CORREÇÃO: Enviar para o servidor em segundo plano
       await _sendVitalDataToServer(currentVitalData);
 
-      // ✅ Processar notificações
-      await _notificationService.processVitalDataAndNotify(
-        userId,
-        currentVitalData,
-        token,
-      );
+      // ✅ CORREÇÃO: Processar notificações passando o contexto
+      // Garantir que o contexto está disponível
+      if (mounted) {
+        await _notificationService.processVitalDataAndNotify(
+          userId,
+          currentVitalData,
+          token,
+          context, // ✅ Contexto passado para mostrar alertas
+        );
+      }
 
       debugPrint(
         '🔄 Dados vitais NOVOS gerados: '
@@ -224,72 +229,112 @@ class _StatusPageState extends State<StatusPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('PleniMind - Status'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _isLoading || _isRefreshing ? null : _refreshData,
-            tooltip: 'Atualizar dados',
+  Widget _buildLoadingScreen() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 20),
+          Text(
+            'Carregando seus dados de saúde...',
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
           ),
         ],
       ),
-      drawer: AppDrawer(
-        userEmail: _userEmail,
-        screenWidth: screenWidth,
-        screenHeight: screenHeight,
-      ),
+    );
+  }
 
-      body: LoadingOverlay(
-        isLoading: _isRefreshing,
-        message: 'Atualizando dados de saúde...',
-        child:
-            _isLoading
-                ? const LoadingScreen(
-                  message: 'Carregando seus dados de saúde...',
-                )
-                : _errorMessage.isNotEmpty
-                ? Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(screenWidth * 0.05),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.warning,
-                          size: screenWidth * 0.15,
-                          color: Colors.orange,
-                        ),
-                        SizedBox(height: screenHeight * 0.02),
-                        Text(
-                          _errorMessage,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: screenWidth * 0.04,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        SizedBox(height: screenHeight * 0.03),
-                        SizedBox(
-                          width: screenWidth * 0.6,
-                          child: ElevatedButton(
-                            onPressed: _loadUserData,
-                            child: const Text('Tentar Novamente'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-                : _buildStatusGrid(context),
+  Widget _buildErrorScreen() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(screenWidth * 0.05),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.warning, size: screenWidth * 0.15, color: Colors.orange),
+            SizedBox(height: screenHeight * 0.02),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: screenWidth * 0.04,
+                color: Colors.grey[700],
+              ),
+            ),
+            SizedBox(height: screenHeight * 0.03),
+            SizedBox(
+              width: screenWidth * 0.6,
+              child: ElevatedButton(
+                onPressed: _loadUserData,
+                child: const Text('Tentar Novamente'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required BuildContext context,
+    required String value,
+    required String label,
+    required IconData icon,
+    required Color color,
+    required double lastValue,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: EdgeInsets.all(screenWidth * 0.03),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(screenWidth * 0.03),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: screenWidth * 0.07),
+            ),
+            SizedBox(height: screenHeight * 0.015),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: screenWidth * 0.045,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            SizedBox(height: screenHeight * 0.01),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: screenWidth * 0.032,
+                color: Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: screenHeight * 0.005),
+            Container(
+              height: 2,
+              width: screenWidth * 0.1,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -475,62 +520,38 @@ class _StatusPageState extends State<StatusPage> {
     );
   }
 
-  Widget _buildStatCard({
-    required BuildContext context,
-    required String value,
-    required String label,
-    required IconData icon,
-    required Color color,
-    required double lastValue,
-  }) {
+  @override
+  Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: EdgeInsets.all(screenWidth * 0.03),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: EdgeInsets.all(screenWidth * 0.03),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: screenWidth * 0.07),
-            ),
-            SizedBox(height: screenHeight * 0.015),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: screenWidth * 0.045,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            SizedBox(height: screenHeight * 0.01),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: screenWidth * 0.032,
-                color: Colors.grey[600],
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: screenHeight * 0.005),
-            Container(
-              height: 2,
-              width: screenWidth * 0.1,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(1),
-              ),
-            ),
-          ],
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('PleniMind - Status'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _isLoading || _isRefreshing ? null : _refreshData,
+            tooltip: 'Atualizar dados',
+          ),
+        ],
+      ),
+      drawer: AppDrawer(
+        userEmail: _userEmail,
+        screenWidth: screenWidth,
+        screenHeight: screenHeight,
+      ),
+      body: LoadingOverlay(
+        isLoading: _isRefreshing,
+        message: 'Atualizando dados de saúde...',
+        child:
+            _isLoading
+                ? _buildLoadingScreen()
+                : _errorMessage.isNotEmpty
+                ? _buildErrorScreen()
+                : _buildStatusGrid(context),
       ),
     );
   }

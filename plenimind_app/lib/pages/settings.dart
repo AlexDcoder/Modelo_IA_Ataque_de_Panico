@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:plenimind_app/components/status/notifications/emergency_contact_manager.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
 import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/service/account_service.dart';
@@ -7,6 +8,7 @@ import 'package:plenimind_app/components/utils/loading_overlay.dart';
 import 'package:plenimind_app/schemas/request/personal_data.dart';
 import 'package:plenimind_app/schemas/response/user_personal_request.dart';
 import 'package:plenimind_app/schemas/dto/emergency_contact_dto.dart';
+import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 
 class SettingsPage extends StatefulWidget {
   static const String routePath = '/settings';
@@ -63,6 +65,36 @@ class _SettingsPageState extends State<SettingsPage> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  // ✅ NOVO MÉTODO: Converter EmergencyContactDTO para EmergencyContact
+  List<EmergencyContact> _convertDTOsToEmergencyContacts(
+    List<EmergencyContactDTO> dtos,
+  ) {
+    final userId = _authManager.userId ?? '';
+    return dtos.asMap().entries.map((entry) {
+      final index = entry.key;
+      final dto = entry.value;
+      return EmergencyContact(
+        id: '${userId}_contact_$index',
+        name: dto.name,
+        phone: dto.phone,
+        imageUrl: '', // Definir imagem padrão ou deixar vazio
+        priority: index + 1, // Prioridade baseada na ordem (1-based)
+      );
+    }).toList();
+  }
+
+  // ✅ NOVO MÉTODO: Converter EmergencyContact para EmergencyContactDTO
+  List<EmergencyContactDTO> _convertEmergencyContactsToDTOs(
+    List<EmergencyContact> contacts,
+  ) {
+    return contacts
+        .map(
+          (contact) =>
+              EmergencyContactDTO(name: contact.name, phone: contact.phone),
+        )
+        .toList();
   }
 
   Future<void> _saveUserData() async {
@@ -209,6 +241,77 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  void _showEmergencyContactsManager() {
+    // ✅ CORREÇÃO: Converter EmergencyContactDTO para EmergencyContact
+    final initialContacts =
+        _userData != null
+            ? _convertDTOsToEmergencyContacts(_userData!.emergencyContacts)
+            : <EmergencyContact>[];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder:
+          (context) => Container(
+            height: MediaQuery.of(context).size.height * 0.9,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                AppBar(
+                  title: const Text('Gerenciar Contatos de Emergência'),
+                  automaticallyImplyLeading: false,
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: EmergencyContactManager(
+                    initialContacts:
+                        initialContacts, // ✅ Agora é List<EmergencyContact>
+                    onContactsUpdated: (
+                      List<EmergencyContact> updatedContacts,
+                    ) async {
+                      // ✅ CORREÇÃO: Converter EmergencyContact para EmergencyContactDTO
+                      final emergencyContactsDTO =
+                          _convertEmergencyContactsToDTOs(updatedContacts);
+
+                      final token = _authManager.token;
+                      final userId = _authManager.userId;
+
+                      if (token != null && userId != null) {
+                        final result = await _userService
+                            .updateUserEmergencyContacts(
+                              userId,
+                              emergencyContactsDTO,
+                            );
+
+                        if (result != null) {
+                          // Recarregar dados do usuário
+                          await _loadUserData();
+                          Navigator.pop(context); // Fechar o modal após sucesso
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('❌ Erro ao atualizar contatos'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    screenWidth: MediaQuery.of(context).size.width,
+                    userId: _authManager.userId ?? '',
+                  ),
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
   Widget _buildUserInfoSection() {
     return Card(
       child: Padding(
@@ -291,9 +394,10 @@ class _SettingsPageState extends State<SettingsPage> {
               leading: const Icon(Icons.emergency),
               title: const Text('Contatos de Emergência'),
               subtitle: Text(
-                _userData?.emergencyContacts.length.toString() ?? '0',
+                '${_userData?.emergencyContacts.length ?? 0} contatos configurados',
               ),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: _showEmergencyContactsManager,
             ),
             if (_userData?.detectionTime != null)
               ListTile(
