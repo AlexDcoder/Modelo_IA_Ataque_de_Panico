@@ -132,7 +132,9 @@ class _ContactPageState extends State<ContactPage> {
       setState(() {
         _termsAccepted = true;
       });
-      await _saveSelection();
+      // ✅ AGORA: Não salva automaticamente após aceitar termos
+      // O usuário deve clicar explicitamente no botão salvar
+      _showSnackBar('Termos aceitos! Agora você pode salvar seus contatos.');
     } else {
       debugPrint(
         '⚠️ Usuário voltou da tela de Termos sem aceitar. Limpando seleção.',
@@ -144,10 +146,12 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Future<void> _saveSelection() async {
+    // ✅ CORREÇÃO: Não navega para termos automaticamente
+    // Usuário deve aceitar termos explicitamente antes de salvar
     if (!_termsAccepted) {
       _showSnackBar('Aceite os termos e condições primeiro');
       await _navigateToTerms();
-      return;
+      return; // Impede o salvamento até que os termos sejam aceitos
     }
 
     try {
@@ -276,7 +280,7 @@ class _ContactPageState extends State<ContactPage> {
             Icon(
               Icons.lock_person,
               size: screenWidth * 0.14,
-              color: colorScheme.onSurface.withValues(alpha: 0.6),
+              color: colorScheme.onSurface.withOpacity(0.6),
             ),
             SizedBox(height: screenHeight * 0.02),
             Text(
@@ -292,7 +296,7 @@ class _ContactPageState extends State<ContactPage> {
               'Ative a permissão em Configurações para permitir que o app leia seus contatos.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                color: colorScheme.onSurface.withOpacity(0.7),
                 fontSize: screenWidth * 0.035,
               ),
             ),
@@ -355,7 +359,7 @@ class _ContactPageState extends State<ContactPage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: screenWidth * 0.04,
-                color: colorScheme.onSurface.withValues(alpha: 0.7),
+                color: colorScheme.onSurface.withOpacity(0.7),
                 height: 1.4,
               ),
             ),
@@ -402,11 +406,13 @@ class _ContactPageState extends State<ContactPage> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.save, size: screenWidth * 0.06),
-            onPressed: _selectedContactIds.isNotEmpty ? _saveSelection : null,
-            tooltip: 'Salvar contatos',
-          ),
+          // ✅ CORREÇÃO: Botão salvar só aparece se termos foram aceitos
+          if (_termsAccepted && _selectedContactIds.isNotEmpty)
+            IconButton(
+              icon: Icon(Icons.save, size: screenWidth * 0.06),
+              onPressed: _saveSelection,
+              tooltip: 'Salvar contatos',
+            ),
         ],
       ),
       body:
@@ -419,9 +425,7 @@ class _ContactPageState extends State<ContactPage> {
                   if (_emergencyContacts.isNotEmpty) ...[
                     Container(
                       width: double.infinity,
-                      color: colorScheme.primaryContainer.withValues(
-                        alpha: 0.3,
-                      ),
+                      color: colorScheme.primaryContainer.withOpacity(0.3),
                       padding: EdgeInsets.all(screenWidth * 0.04),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,6 +465,7 @@ class _ContactPageState extends State<ContactPage> {
                     const Divider(height: 1),
                   ],
 
+                  // ✅ CORREÇÃO: Só mostra prompt de termos se houver contatos selecionados
                   if (_selectedContactIds.isNotEmpty && !_termsAccepted) ...[
                     Expanded(child: _buildTermsPromptUI(context)),
                   ] else ...[
@@ -496,8 +501,8 @@ class _ContactPageState extends State<ContactPage> {
                                     Icon(
                                       Icons.contacts,
                                       size: screenWidth * 0.15,
-                                      color: colorScheme.onSurface.withValues(
-                                        alpha: 0.6,
+                                      color: colorScheme.onSurface.withOpacity(
+                                        0.6,
                                       ),
                                     ),
                                     SizedBox(height: screenHeight * 0.02),

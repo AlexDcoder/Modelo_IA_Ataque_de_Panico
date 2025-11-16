@@ -7,6 +7,7 @@ import 'package:plenimind_app/pages/terms_conditions.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/theme/colors_pallet.dart';
 import 'package:plenimind_app/service/notification_service.dart';
+import 'package:plenimind_app/pages/settings.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +45,7 @@ class MyApp extends StatelessWidget {
         TermsConditionsScreen.routePath:
             (context) => const TermsConditionsScreen(),
         StatusPage.routePath: (context) => const StatusPage(),
+        SettingsPage.routePath: (context) => const SettingsPage(),
       },
     );
   }

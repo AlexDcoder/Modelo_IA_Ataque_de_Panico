@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
 import 'package:plenimind_app/pages/login.dart';
+import 'package:plenimind_app/pages/settings.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/service/account_service.dart';
 
@@ -238,11 +239,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   ),
                   onTap: () {
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Configurações - Em desenvolvimento'),
-                      ),
-                    );
+                    Navigator.of(context).pushNamed(SettingsPage.routePath);
                   },
                 ),
                 ListTile(

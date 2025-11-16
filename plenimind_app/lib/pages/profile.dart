@@ -29,7 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _model.selectedDuration = Duration.zero;
 
     // Inicializar o controller do tempo com valor padrão
-    _model.cityTextController!.text = "00:00:00"; // Valor padrão de 30 minutos
+    _model.cityTextController!.text = "00:30:00"; // Valor padrão de 30 minutos
   }
 
   @override
@@ -95,7 +95,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // No build method da ProfilePage, adicione:
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -112,107 +111,126 @@ class _ProfilePageState extends State<ProfilePage> {
         screenWidth: screenWidth,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: screenWidth * 0.05,
-            right: screenWidth * 0.05,
-          ),
-          child: Column(
-            children: [
-              // Header informativo
-              Padding(
-                padding: EdgeInsets.all(screenWidth * 0.05),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Complete seu Perfil',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontSize: screenWidth * 0.06,
-                      ),
-                    ),
-                    SizedBox(height: screenHeight * 0.01),
-                    Text(
-                      'Preencha suas informações para personalizar sua experiência',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
-                        fontSize: screenWidth * 0.04,
-                      ),
-                    ),
-                  ],
-                ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: screenWidth * 0.05,
+                right: screenWidth * 0.05,
+                top: screenHeight * 0.02,
               ),
-
-              // Formulário
-              ProfileForm(
-                model: _model,
-                onNext: _handleNext,
-                screenWidth: screenWidth,
-              ),
-
-              // Informações adicionais
-              Padding(
-                padding: EdgeInsets.all(screenWidth * 0.05),
-                child: Container(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
-                  decoration: BoxDecoration(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.3),
-                    ),
-                  ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: screenWidth * 0.05,
-                          ),
-                          SizedBox(width: screenWidth * 0.02),
-                          Text(
-                            'Por que precisamos dessas informações?',
-                            style: Theme.of(
+                      // Header informativo
+                      Padding(
+                        padding: EdgeInsets.all(screenWidth * 0.05),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Complete seu Perfil',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: screenWidth * 0.06,
+                              ),
+                            ),
+                            SizedBox(height: screenHeight * 0.01),
+                            Text(
+                              'Preencha suas informações para personalizar sua experiência',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
+                                fontSize: screenWidth * 0.04,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Formulário
+                      Flexible(
+                        child: ProfileForm(
+                          model: _model,
+                          onNext: _handleNext,
+                          screenWidth: screenWidth,
+                        ),
+                      ),
+
+                      // Informações adicionais
+                      Padding(
+                        padding: EdgeInsets.all(screenWidth * 0.05),
+                        child: Container(
+                          padding: EdgeInsets.all(screenWidth * 0.04),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
                               context,
-                            ).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                              fontSize: screenWidth * 0.04,
+                            ).colorScheme.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withOpacity(0.3),
                             ),
                           ),
-                        ],
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      Text(
-                        '• Seu nome: Para personalizar suas notificações\n'
-                        '• Tempo de detecção: Para configurar a frequência de monitoramento dos seus sinais vitais',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
-                          fontSize: screenWidth * 0.035,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    size: screenWidth * 0.05,
+                                  ),
+                                  SizedBox(width: screenWidth * 0.02),
+                                  Text(
+                                    'Por que precisamos dessas informações?',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      fontSize: screenWidth * 0.04,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: screenHeight * 0.01),
+                              Text(
+                                '• Seu nome: Para personalizar suas notificações\n'
+                                '• Tempo de detecção: Para configurar a frequência de monitoramento dos seus sinais vitais',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withOpacity(0.7),
+                                  fontSize: screenWidth * 0.035,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
