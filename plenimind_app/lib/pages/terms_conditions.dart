@@ -25,7 +25,6 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
   }
 
   Future<void> _onContinuePressed() async {
-    // ✅ CORREÇÃO: Salvar que o usuário aceitou os termos
     if (_isAccepted) {
       await PermissionManager.setTermsAccepted(true);
       debugPrint('✅ Termos de uso aceitos e salvos');
@@ -35,32 +34,37 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: CustomAppBar(),
+      appBar: CustomAppBar(screenWidth: screenWidth),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
-            TermsHeader(),
-            const SizedBox(height: 24),
-            Expanded(child: TermsContent()),
-            const SizedBox(height: 24),
+            SizedBox(height: screenHeight * 0.02),
+            TermsHeader(screenWidth: screenWidth),
+            SizedBox(height: screenHeight * 0.03),
+            Expanded(child: TermsContent(screenWidth: screenWidth)),
+            SizedBox(height: screenHeight * 0.03),
             TermsAcceptance(
               isAccepted: _isAccepted,
               onChanged: _onAcceptanceChanged,
+              screenWidth: screenWidth,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: screenHeight * 0.02),
             ContinueButton(
               isEnabled: _isAccepted,
               onPressed: _onContinuePressed,
+              screenWidth: screenWidth,
+              screenHeight: screenHeight,
             ),
-            const SizedBox(height: 34),
+            SizedBox(height: screenHeight * 0.04),
           ],
         ),
       ),

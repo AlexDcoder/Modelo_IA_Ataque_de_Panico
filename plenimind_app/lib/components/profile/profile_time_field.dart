@@ -7,6 +7,7 @@ class ProfileTimeField extends StatelessWidget {
   final FocusNode focusNode;
   final Duration initialDuration;
   final void Function(Duration) onDurationChanged;
+  final double screenWidth;
 
   const ProfileTimeField({
     super.key,
@@ -14,12 +15,16 @@ class ProfileTimeField extends StatelessWidget {
     required this.focusNode,
     required this.initialDuration,
     required this.onDurationChanged,
+    required this.screenWidth,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.05,
+        vertical: screenWidth * 0.02,
+      ),
       child: TextFormField(
         controller: controller,
         focusNode: focusNode,
@@ -28,6 +33,7 @@ class ProfileTimeField extends StatelessWidget {
           labelText: 'Tempo de Detecção',
           labelStyle: GoogleFonts.inter(
             color: Theme.of(context).textTheme.labelMedium?.color,
+            fontSize: screenWidth * 0.04,
           ),
           hintText: 'hh:mm:ss',
           enabledBorder: OutlineInputBorder(
@@ -46,8 +52,9 @@ class ProfileTimeField extends StatelessWidget {
           ),
           filled: true,
           fillColor: Theme.of(context).scaffoldBackgroundColor,
+          contentPadding: EdgeInsets.all(screenWidth * 0.04),
           suffixIcon: IconButton(
-            icon: const Icon(Icons.arrow_forward_ios, size: 16),
+            icon: Icon(Icons.arrow_forward_ios, size: screenWidth * 0.04),
             onPressed: () => _showTimerPicker(context),
             tooltip: 'Selecionar tempo',
           ),
@@ -58,6 +65,8 @@ class ProfileTimeField extends StatelessWidget {
   }
 
   void _showTimerPicker(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     Duration tempDuration = initialDuration;
 
     showModalBottomSheet(
@@ -65,35 +74,35 @@ class ProfileTimeField extends StatelessWidget {
       isScrollControlled: true,
       builder:
           (_) => Container(
-            height: MediaQuery.of(context).size.height * 0.4,
-            padding: const EdgeInsets.all(16),
+            height: screenHeight * 0.4,
+            padding: EdgeInsets.all(screenWidth * 0.04),
             child: Column(
               children: [
-                // Header do picker
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Selecionar Tempo',
                       style: GoogleFonts.inter(
-                        fontSize: 18,
+                        fontSize: screenWidth * 0.045,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     Row(
                       children: [
-                        // Botão Cancelar
                         TextButton(
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
                           child: Text(
                             'Cancelar',
-                            style: GoogleFonts.inter(color: Colors.grey[600]),
+                            style: GoogleFonts.inter(
+                              color: Colors.grey[600],
+                              fontSize: screenWidth * 0.04,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        // Botão Confirmar (>)
+                        SizedBox(width: screenWidth * 0.02),
                         IconButton(
                           onPressed: () {
                             controller.text =
@@ -104,16 +113,16 @@ class ProfileTimeField extends StatelessWidget {
                             Navigator.of(context).pop();
                           },
                           icon: Container(
-                            width: 40,
-                            height: 40,
+                            width: screenWidth * 0.1,
+                            height: screenWidth * 0.1,
                             decoration: BoxDecoration(
                               color: Theme.of(context).primaryColor,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.arrow_forward,
                               color: Colors.white,
-                              size: 20,
+                              size: screenWidth * 0.05,
                             ),
                           ),
                           tooltip: 'Confirmar',
@@ -122,9 +131,8 @@ class ProfileTimeField extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: screenHeight * 0.02),
 
-                // Picker de tempo
                 Expanded(
                   child: CupertinoTimerPicker(
                     mode: CupertinoTimerPickerMode.hms,
@@ -135,9 +143,8 @@ class ProfileTimeField extends StatelessWidget {
                   ),
                 ),
 
-                // Preview do tempo selecionado
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(screenWidth * 0.03),
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
@@ -150,13 +157,13 @@ class ProfileTimeField extends StatelessWidget {
                       Icon(
                         Icons.access_time,
                         color: Theme.of(context).primaryColor,
-                        size: 16,
+                        size: screenWidth * 0.04,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: screenWidth * 0.02),
                       Text(
                         'Tempo selecionado: ',
                         style: GoogleFonts.inter(
-                          fontSize: 14,
+                          fontSize: screenWidth * 0.035,
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
@@ -165,7 +172,7 @@ class ProfileTimeField extends StatelessWidget {
                         "${(tempDuration.inMinutes % 60).toString().padLeft(2, '0')}:"
                         "${(tempDuration.inSeconds % 60).toString().padLeft(2, '0')}",
                         style: GoogleFonts.inter(
-                          fontSize: 14,
+                          fontSize: screenWidth * 0.035,
                           fontWeight: FontWeight.w600,
                           color: Theme.of(context).primaryColor,
                         ),

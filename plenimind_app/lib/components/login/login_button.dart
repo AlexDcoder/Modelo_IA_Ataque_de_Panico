@@ -5,20 +5,22 @@ class LoginButton extends StatelessWidget {
   final String text;
   final bool isLoading;
   final VoidCallback onPressed;
+  final double screenWidth;
 
   const LoginButton({
     super.key,
     required this.text,
     required this.isLoading,
     required this.onPressed,
+    required this.screenWidth,
   });
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: SizedBox(
-        width: 230,
-        height: 52,
+        width: screenWidth * 0.6,
+        height: screenWidth * 0.13,
         child: ElevatedButton(
           onPressed: isLoading ? null : onPressed,
           style: ElevatedButton.styleFrom(
@@ -31,9 +33,9 @@ class LoginButton extends StatelessWidget {
           ),
           child:
               isLoading
-                  ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                  ? SizedBox(
+                    width: screenWidth * 0.05,
+                    height: screenWidth * 0.05,
                     child: CircularProgressIndicator(
                       color: Colors.white,
                       strokeWidth: 2,
@@ -41,7 +43,10 @@ class LoginButton extends StatelessWidget {
                   )
                   : Text(
                     text,
-                    style: GoogleFonts.interTight(fontWeight: FontWeight.w600),
+                    style: GoogleFonts.interTight(
+                      fontWeight: FontWeight.w600,
+                      fontSize: screenWidth * 0.04,
+                    ),
                   ),
         ),
       ),

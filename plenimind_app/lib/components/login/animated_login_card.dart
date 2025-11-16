@@ -5,6 +5,9 @@ import 'package:plenimind_app/components/login/sign_in_tab.dart';
 
 class AnimatedLoginCard extends StatefulWidget {
   final TabController tabController;
+  final double screenWidth;
+  final double screenHeight;
+  final bool isTablet;
 
   // Create Account Props
   final TextEditingController emailCreateController;
@@ -45,6 +48,9 @@ class AnimatedLoginCard extends StatefulWidget {
     required this.onPasswordVisibilityChanged,
     required this.isSignInLoading,
     required this.onSignIn,
+    required this.screenWidth,
+    required this.screenHeight,
+    required this.isTablet,
   });
 
   @override
@@ -92,10 +98,15 @@ class _AnimatedLoginCardState extends State<AnimatedLoginCard>
       child: SlideTransition(
         position: _slideAnimation,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(widget.screenWidth * 0.03),
           child: Container(
             width: double.infinity,
-            constraints: const BoxConstraints(maxWidth: 570),
+            constraints: BoxConstraints(
+              maxWidth:
+                  widget.isTablet
+                      ? widget.screenWidth * 0.6
+                      : widget.screenWidth * 0.9,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
@@ -112,7 +123,10 @@ class _AnimatedLoginCardState extends State<AnimatedLoginCard>
               children: [
                 LoginTabBar(tabController: widget.tabController),
                 SizedBox(
-                  height: MediaQuery.of(context).size.width >= 768 ? 480 : 580,
+                  height:
+                      widget.isTablet
+                          ? widget.screenHeight * 0.5
+                          : widget.screenHeight * 0.55,
                   child: TabBarView(
                     controller: widget.tabController,
                     children: [
@@ -126,6 +140,7 @@ class _AnimatedLoginCardState extends State<AnimatedLoginCard>
                             widget.onPasswordCreateVisibilityChanged,
                         isLoading: widget.isSignUpLoading,
                         onSubmit: widget.onSignUp,
+                        screenWidth: widget.screenWidth,
                       ),
                       SignInTab(
                         emailController: widget.emailController,
@@ -137,6 +152,7 @@ class _AnimatedLoginCardState extends State<AnimatedLoginCard>
                             widget.onPasswordVisibilityChanged,
                         isLoading: widget.isSignInLoading,
                         onSubmit: widget.onSignIn,
+                        screenWidth: widget.screenWidth,
                       ),
                     ],
                   ),

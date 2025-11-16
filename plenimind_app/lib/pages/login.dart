@@ -64,7 +64,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() => _isSignUpLoading = true);
 
     try {
-      // Navegar para ProfilePage passando email e senha
       Navigator.pushNamed(
         context,
         ProfilePage.routePath,
@@ -117,16 +116,20 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isTablet = screenWidth > 600;
+
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
         child: Stack(
           children: [
-            const LoginHeader(),
+            LoginHeader(screenWidth: screenWidth),
             Align(
               alignment: Alignment.topCenter,
               child: Padding(
-                padding: const EdgeInsets.only(top: 170),
+                padding: EdgeInsets.only(top: screenHeight * 0.15),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -153,6 +156,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         },
                         isSignInLoading: _isSignInLoading,
                         onSignIn: _handleSignIn,
+                        screenWidth: screenWidth,
+                        screenHeight: screenHeight,
+                        isTablet: isTablet,
                       ),
                     ],
                   ),

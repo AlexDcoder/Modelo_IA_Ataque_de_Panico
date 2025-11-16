@@ -9,6 +9,7 @@ class LoginTextField extends StatelessWidget {
   final bool isPassword;
   final bool passwordVisible;
   final ValueChanged<bool>? onPasswordVisibilityChanged;
+  final double screenWidth;
 
   const LoginTextField({
     super.key,
@@ -19,6 +20,7 @@ class LoginTextField extends StatelessWidget {
     this.isPassword = false,
     this.passwordVisible = false,
     this.onPasswordVisibilityChanged,
+    required this.screenWidth,
   });
 
   @override
@@ -30,7 +32,10 @@ class LoginTextField extends StatelessWidget {
       obscureText: isPassword && !passwordVisible,
       decoration: InputDecoration(
         labelText: labelText,
-        labelStyle: GoogleFonts.inter(color: Colors.grey[600]),
+        labelStyle: GoogleFonts.inter(
+          color: Colors.grey[600],
+          fontSize: screenWidth * 0.04,
+        ),
         enabledBorder: OutlineInputBorder(
           borderSide: BorderSide(color: Colors.grey[300]!, width: 2),
           borderRadius: BorderRadius.circular(40),
@@ -51,13 +56,14 @@ class LoginTextField extends StatelessWidget {
         ),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.all(24),
+        contentPadding: EdgeInsets.all(screenWidth * 0.04),
         suffixIcon:
             isPassword
                 ? IconButton(
                   icon: Icon(
                     passwordVisible ? Icons.visibility : Icons.visibility_off,
                     color: Colors.grey[600],
+                    size: screenWidth * 0.05,
                   ),
                   onPressed: () {
                     onPasswordVisibilityChanged?.call(!passwordVisible);
@@ -65,7 +71,7 @@ class LoginTextField extends StatelessWidget {
                 )
                 : null,
       ),
-      style: GoogleFonts.inter(),
+      style: GoogleFonts.inter(fontSize: screenWidth * 0.04),
     );
   }
 }

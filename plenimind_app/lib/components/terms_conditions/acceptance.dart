@@ -4,11 +4,13 @@ import 'package:plenimind_app/theme/colors_pallet.dart';
 class TermsAcceptance extends StatelessWidget {
   final bool isAccepted;
   final ValueChanged<bool> onChanged;
+  final double screenWidth;
 
   const TermsAcceptance({
     super.key,
     required this.isAccepted,
     required this.onChanged,
+    required this.screenWidth,
   });
 
   @override
@@ -31,7 +33,7 @@ class TermsAcceptance extends StatelessWidget {
         title: Text(
           'Autorizo coleta de dados biométricos',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: screenWidth * 0.04,
             fontWeight: FontWeight.w500,
             color: colorScheme.onSurface,
           ),
@@ -39,7 +41,7 @@ class TermsAcceptance extends StatelessWidget {
         activeColor: AppColors.success,
         checkColor: AppColors.onPrimary,
         controlAffinity: ListTileControlAffinity.leading,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        contentPadding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03),
       ),
     );
   }

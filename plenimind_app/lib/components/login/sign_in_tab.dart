@@ -12,6 +12,7 @@ class SignInTab extends StatelessWidget {
   final ValueChanged<bool> onPasswordVisibilityChanged;
   final bool isLoading;
   final VoidCallback onSubmit;
+  final double screenWidth;
 
   const SignInTab({
     super.key,
@@ -23,12 +24,18 @@ class SignInTab extends StatelessWidget {
     required this.onPasswordVisibilityChanged,
     required this.isLoading,
     required this.onSubmit,
+    required this.screenWidth,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      padding: EdgeInsets.fromLTRB(
+        screenWidth * 0.05,
+        screenWidth * 0.03,
+        screenWidth * 0.05,
+        0,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,15 +44,17 @@ class SignInTab extends StatelessWidget {
               title: 'Bem-vindo de Volta',
               subtitle:
                   'Preencha as informações abaixo para acessar sua conta.',
+              screenWidth: screenWidth,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: screenWidth * 0.05),
             LoginTextField(
               controller: emailController,
               focusNode: emailFocusNode,
               labelText: 'Email',
               keyboardType: TextInputType.emailAddress,
+              screenWidth: screenWidth,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: screenWidth * 0.04),
             LoginTextField(
               controller: passwordController,
               focusNode: passwordFocusNode,
@@ -53,15 +62,17 @@ class SignInTab extends StatelessWidget {
               isPassword: true,
               passwordVisible: passwordVisible,
               onPasswordVisibilityChanged: onPasswordVisibilityChanged,
+              screenWidth: screenWidth,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: screenWidth * 0.05),
             LoginButton(
               text: 'Entrar',
               isLoading: isLoading,
               onPressed: onSubmit,
+              screenWidth: screenWidth,
             ),
-            const SizedBox(height: 16),
-            const SizedBox(height: 16),
+            SizedBox(height: screenWidth * 0.04),
+            SizedBox(height: screenWidth * 0.04),
           ],
         ),
       ),

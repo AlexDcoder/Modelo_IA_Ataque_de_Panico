@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:plenimind_app/components/terms_conditions/section.dart';
 
 class TermsContent extends StatelessWidget {
-  const TermsContent({super.key});
+  final double screenWidth;
+
+  const TermsContent({super.key, required this.screenWidth});
 
   static final List<Map<String, String>> _sections = [
     {
@@ -60,7 +62,7 @@ class TermsContent extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: EdgeInsets.all(screenWidth * 0.04),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,10 +70,11 @@ class TermsContent extends StatelessWidget {
                 _sections
                     .map(
                       (section) => Padding(
-                        padding: const EdgeInsets.only(bottom: 20.0),
+                        padding: EdgeInsets.only(bottom: screenWidth * 0.04),
                         child: TermsSection(
                           title: section['title']!,
                           content: section['content']!,
+                          screenWidth: screenWidth,
                         ),
                       ),
                     )

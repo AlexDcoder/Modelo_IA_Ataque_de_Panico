@@ -15,6 +15,8 @@ class SplashPage extends StatefulWidget {
 class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -53,11 +55,11 @@ class _SplashPageState extends State<SplashPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.only(top: 44),
+                          padding: EdgeInsets.only(top: screenHeight * 0.1),
                           child: Text(
                                 'PleniMind',
                                 style: GoogleFonts.interTight(
-                                  fontSize: 76,
+                                  fontSize: screenWidth * 0.15,
                                   fontWeight: FontWeight.w600,
                                 ),
                               )
@@ -69,12 +71,14 @@ class _SplashPageState extends State<SplashPage> {
                               ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 44),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.1,
+                          ),
                           child: Text(
                                 'Bem-Estar Inteligente',
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.inter(
-                                  fontSize: 16,
+                                  fontSize: screenWidth * 0.045,
                                   fontStyle: FontStyle.italic,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -95,21 +99,29 @@ class _SplashPageState extends State<SplashPage> {
                 .scale(begin: const Offset(3, 3), end: const Offset(1, 1)),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 44),
+            padding: EdgeInsets.fromLTRB(
+              screenWidth * 0.04,
+              screenHeight * 0.05,
+              screenWidth * 0.04,
+              screenHeight * 0.1,
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: Align(
                     alignment: Alignment.center,
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
+                      padding: EdgeInsets.only(bottom: screenHeight * 0.02),
                       child: ElevatedButton(
                             onPressed: () {
                               Navigator.pushNamed(context, LoginPage.routePath);
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: theme.colorScheme.primary,
-                              minimumSize: const Size(330, 52),
+                              minimumSize: Size(
+                                screenWidth * 0.8,
+                                screenHeight * 0.07,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(24),
                               ),
@@ -117,7 +129,7 @@ class _SplashPageState extends State<SplashPage> {
                             child: Text(
                               'Começar',
                               style: GoogleFonts.interTight(
-                                fontSize: 18,
+                                fontSize: screenWidth * 0.045,
                                 fontWeight: FontWeight.w600,
                                 color: theme.colorScheme.onPrimary,
                               ),

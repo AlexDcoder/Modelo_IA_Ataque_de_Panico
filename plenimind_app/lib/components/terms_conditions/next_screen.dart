@@ -12,7 +12,9 @@ class NextScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: CustomAppBar(),
+      appBar: CustomAppBar(
+        screenWidth: MediaQuery.of(context).size.width * 0.4,
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

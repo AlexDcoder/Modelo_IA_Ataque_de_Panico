@@ -44,12 +44,10 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Future<void> _restorePermissionsIfAccepted() async {
-    // ✅ CORREÇÃO: Se o usuário já tinha aceito as permissões, restaurá-las automaticamente
     final permissionsStatus = await PermissionManager.getAllPermissionsStatus();
 
     if (permissionsStatus['contacts_permission'] == true) {
       debugPrint('✅ Restaurando permissão de contatos aceita anteriormente');
-      // A permissão será pedida normalmente quando necessário em getDeviceContacts()
     }
 
     if (permissionsStatus['notification_permission'] == true) {
@@ -75,7 +73,6 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Future<void> _checkTermsStatus() async {
-    // ✅ CORREÇÃO: Verificar se os termos foram aceitos (persistente mesmo após deletar conta)
     final termsAccepted = await PermissionManager.getTermsAccepted();
     setState(() {
       _termsAccepted = termsAccepted;
@@ -88,12 +85,10 @@ class _ContactPageState extends State<ContactPage> {
     });
 
     try {
-      // Carrega contatos salvos como emergência
       final emergencyContacts = await ContactService.getEmergencyContacts(
         _email,
       );
 
-      // Carrega contatos do celular
       final deviceContacts = await ContactService.getDeviceContacts();
 
       final emergencyPhones = emergencyContacts.map((c) => c.phone).toSet();
@@ -139,7 +134,6 @@ class _ContactPageState extends State<ContactPage> {
       });
       await _saveSelection();
     } else {
-      // 📌 Quando volta da tela de Termos sem aceitar, limpar seleção de contatos
       debugPrint(
         '⚠️ Usuário voltou da tela de Termos sem aceitar. Limpando seleção.',
       );
@@ -180,11 +174,9 @@ class _ContactPageState extends State<ContactPage> {
             );
           }).toList();
 
-      // Converter para DTO para envio à API
       final emergencyContactsDTO =
           contactsWithPriority.map((contact) => contact.toDTO()).toList();
 
-      // Criar usuário com todos os dados
       final userData = UserPersonalData(
         username: _username,
         email: _email,
@@ -193,20 +185,14 @@ class _ContactPageState extends State<ContactPage> {
         emergencyContacts: emergencyContactsDTO,
       );
 
-      // Registrar usuário no backend
       final userResponse = await _userService.createUser(userData);
 
       if (userResponse != null) {
-        // Salvar contatos localmente também
         await ContactService.saveEmergencyContacts(
           contactsWithPriority,
           _email,
         );
 
-        // 📌 OPÇÃO A: Verificar se tokens foram retornados na resposta de criação
-        // (Por enquanto, o backend não retorna tokens, então fazemos login automático)
-
-        // 📌 OPÇÃO B: Fazer login automático com tratamento de erro
         try {
           debugPrint('🔐 Tentando autenticação automática após cadastro...');
           final loginResult = await _authService.login(_email, _password);
@@ -219,14 +205,12 @@ class _ContactPageState extends State<ContactPage> {
               Navigator.pushReplacementNamed(context, StatusPage.routePath);
             }
           } else {
-            // ⚠️ OPÇÃO B: Feedback UX - Login automático falhou
             debugPrint('❌ Autenticação automática falhou após cadastro');
             _showSnackBar(
               'Conta criada, mas login automático falhou. Faça login manualmente.',
             );
 
             if (mounted) {
-              // Redirecionar para tela de login com mensagem
               Navigator.pushReplacementNamed(
                 context,
                 LoginPage.routePath,
@@ -235,7 +219,6 @@ class _ContactPageState extends State<ContactPage> {
             }
           }
         } catch (e) {
-          // ⚠️ OPÇÃO B: Erro durante login automático
           debugPrint('❌ Erro na autenticação automática: $e');
           _showSnackBar(
             'Conta criada, mas houve erro ao autenticar. Tente fazer login.',
@@ -278,50 +261,59 @@ class _ContactPageState extends State<ContactPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget _buildPermissionDenied() {
+  Widget _buildPermissionDeniedUI(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.lock_person,
-              size: 56,
+              size: screenWidth * 0.14,
               color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: screenHeight * 0.02),
             Text(
               'Permissão de contatos negada.',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: screenWidth * 0.045,
                 fontWeight: FontWeight.w600,
                 color: colorScheme.onSurface,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: screenHeight * 0.01),
             Text(
               'Ative a permissão em Configurações para permitir que o app leia seus contatos.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
+                fontSize: screenWidth * 0.035,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: screenHeight * 0.03),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 ElevatedButton(
                   onPressed: () => openAppSettings(),
-                  child: const Text('Abrir configurações'),
+                  child: Text(
+                    'Abrir configurações',
+                    style: TextStyle(fontSize: screenWidth * 0.035),
+                  ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: screenWidth * 0.03),
                 OutlinedButton(
                   onPressed: _loadData,
-                  child: const Text('Tentar novamente'),
+                  child: Text(
+                    'Tentar novamente',
+                    style: TextStyle(fontSize: screenWidth * 0.035),
+                  ),
                 ),
               ],
             ),
@@ -331,43 +323,52 @@ class _ContactPageState extends State<ContactPage> {
     );
   }
 
-  Widget _buildTermsPrompt() {
+  Widget _buildTermsPromptUI(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.06),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.security, size: 64, color: colorScheme.primary),
-            const SizedBox(height: 16),
+            Icon(
+              Icons.security,
+              size: screenWidth * 0.16,
+              color: colorScheme.primary,
+            ),
+            SizedBox(height: screenHeight * 0.03),
             Text(
               'Termos e Condições',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: screenWidth * 0.06,
                 fontWeight: FontWeight.w700,
                 color: colorScheme.onSurface,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: screenHeight * 0.02),
             Text(
               'Para salvar contatos de emergência, você precisa aceitar nossos termos de uso e autorizar o tratamento dos dados.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: screenWidth * 0.04,
                 color: colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.4,
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: screenHeight * 0.04),
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: screenHeight * 0.07,
               child: ElevatedButton(
                 onPressed: _navigateToTerms,
-                child: const Text('Ver Termos e Condições'),
+                child: Text(
+                  'Ver Termos e Condições',
+                  style: TextStyle(fontSize: screenWidth * 0.04),
+                ),
               ),
             ),
           ],
@@ -378,6 +379,8 @@ class _ContactPageState extends State<ContactPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -386,16 +389,21 @@ class _ContactPageState extends State<ContactPage> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Contatos de Emergência'),
+            Text(
+              'Contatos de Emergência',
+              style: TextStyle(fontSize: screenWidth * 0.045),
+            ),
             Text(
               '${_selectedContactIds.length}/5 selecionados',
-              style: theme.textTheme.bodySmall,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: screenWidth * 0.035,
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.save),
+            icon: Icon(Icons.save, size: screenWidth * 0.06),
             onPressed: _selectedContactIds.isNotEmpty ? _saveSelection : null,
             tooltip: 'Salvar contatos',
           ),
@@ -405,7 +413,7 @@ class _ContactPageState extends State<ContactPage> {
           _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _permissionDenied
-              ? _buildPermissionDenied()
+              ? _buildPermissionDeniedUI(context)
               : Column(
                 children: [
                   if (_emergencyContacts.isNotEmpty) ...[
@@ -414,24 +422,29 @@ class _ContactPageState extends State<ContactPage> {
                       color: colorScheme.primaryContainer.withValues(
                         alpha: 0.3,
                       ),
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(screenWidth * 0.04),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.emergency, color: colorScheme.error),
-                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.emergency,
+                                color: colorScheme.error,
+                                size: screenWidth * 0.06,
+                              ),
+                              SizedBox(width: screenWidth * 0.02),
                               Text(
                                 'Seus Contatos de Emergência:',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: colorScheme.onSurface,
+                                  fontSize: screenWidth * 0.04,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: screenHeight * 0.01),
                           ..._emergencyContacts.map((contact) {
                             return ContactItem(
                               contact: contact,
@@ -439,6 +452,7 @@ class _ContactPageState extends State<ContactPage> {
                               onChanged: (value) {},
                               isDisabled: true,
                               showPriority: true,
+                              screenWidth: screenWidth,
                             );
                           }),
                         ],
@@ -448,19 +462,24 @@ class _ContactPageState extends State<ContactPage> {
                   ],
 
                   if (_selectedContactIds.isNotEmpty && !_termsAccepted) ...[
-                    Expanded(child: _buildTermsPrompt()),
+                    Expanded(child: _buildTermsPromptUI(context)),
                   ] else ...[
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(screenWidth * 0.04),
                       child: Row(
                         children: [
-                          Icon(Icons.contacts, color: colorScheme.onSurface),
-                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.contacts,
+                            color: colorScheme.onSurface,
+                            size: screenWidth * 0.06,
+                          ),
+                          SizedBox(width: screenWidth * 0.02),
                           Text(
                             'Escolha contatos do seu celular:',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: colorScheme.onSurface,
+                              fontSize: screenWidth * 0.04,
                             ),
                           ),
                         ],
@@ -476,21 +495,28 @@ class _ContactPageState extends State<ContactPage> {
                                   children: [
                                     Icon(
                                       Icons.contacts,
-                                      size: 64,
+                                      size: screenWidth * 0.15,
                                       color: colorScheme.onSurface.withValues(
                                         alpha: 0.6,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: screenHeight * 0.02),
                                     Text(
                                       'Nenhum contato encontrado',
                                       style: TextStyle(
                                         color: colorScheme.onSurface,
+                                        fontSize: screenWidth * 0.04,
                                       ),
                                     ),
+                                    SizedBox(height: screenHeight * 0.02),
                                     TextButton(
                                       onPressed: _loadData,
-                                      child: const Text('Tentar novamente'),
+                                      child: Text(
+                                        'Tentar novamente',
+                                        style: TextStyle(
+                                          fontSize: screenWidth * 0.04,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -513,6 +539,7 @@ class _ContactPageState extends State<ContactPage> {
                                     isDisabled:
                                         !isSelected &&
                                         _selectedContactIds.length >= 5,
+                                    screenWidth: screenWidth,
                                   );
                                 },
                               ),

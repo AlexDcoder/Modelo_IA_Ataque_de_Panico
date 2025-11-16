@@ -3,8 +3,14 @@ import 'package:flutter/material.dart';
 class TermsSection extends StatelessWidget {
   final String title;
   final String content;
+  final double screenWidth;
 
-  const TermsSection({super.key, required this.title, required this.content});
+  const TermsSection({
+    super.key,
+    required this.title,
+    required this.content,
+    required this.screenWidth,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,17 +23,17 @@ class TermsSection extends StatelessWidget {
         Text(
           title,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: screenWidth * 0.045,
             fontWeight: FontWeight.w600,
             color: colorScheme.onSurface,
             height: 1.3,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: screenWidth * 0.02),
         Text(
           content,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: screenWidth * 0.035,
             color: colorScheme.surface.withValues(alpha: 0.7),
             height: 1.5,
           ),

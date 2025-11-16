@@ -95,8 +95,12 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // No build method da ProfilePage, adicione:
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -105,17 +109,20 @@ class _ProfilePageState extends State<ProfilePage> {
         onBackPressed: () {
           Navigator.pushReplacementNamed(context, LoginPage.routePath);
         },
+        screenWidth: screenWidth,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: screenWidth * 0.05,
+            right: screenWidth * 0.05,
           ),
           child: Column(
             children: [
               // Header informativo
               Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(screenWidth * 0.05),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -126,15 +133,17 @@ class _ProfilePageState extends State<ProfilePage> {
                       ).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: screenWidth * 0.06,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: screenHeight * 0.01),
                     Text(
                       'Preencha suas informações para personalizar sua experiência',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(
                           context,
                         ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontSize: screenWidth * 0.04,
                       ),
                     ),
                   ],
@@ -142,13 +151,17 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
 
               // Formulário
-              ProfileForm(model: _model, onNext: _handleNext),
+              ProfileForm(
+                model: _model,
+                onNext: _handleNext,
+                screenWidth: screenWidth,
+              ),
 
               // Informações adicionais
               Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(screenWidth * 0.05),
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(screenWidth * 0.04),
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
@@ -168,9 +181,9 @@ class _ProfilePageState extends State<ProfilePage> {
                           Icon(
                             Icons.info_outline,
                             color: Theme.of(context).colorScheme.primary,
-                            size: 20,
+                            size: screenWidth * 0.05,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: screenWidth * 0.02),
                           Text(
                             'Por que precisamos dessas informações?',
                             style: Theme.of(
@@ -178,11 +191,12 @@ class _ProfilePageState extends State<ProfilePage> {
                             ).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).colorScheme.primary,
+                              fontSize: screenWidth * 0.04,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: screenHeight * 0.01),
                       Text(
                         '• Seu nome: Para personalizar suas notificações\n'
                         '• Tempo de detecção: Para configurar a frequência de monitoramento dos seus sinais vitais',
@@ -190,6 +204,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           color: Theme.of(
                             context,
                           ).colorScheme.onSurface.withValues(alpha: 0.7),
+                          fontSize: screenWidth * 0.035,
                         ),
                       ),
                     ],
