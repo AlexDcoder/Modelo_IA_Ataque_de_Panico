@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/components/login/animated_login_card.dart';
 import 'package:plenimind_app/components/login/login_header.dart';
+import 'package:plenimind_app/components/utils/loading_overlay.dart';
 import 'package:plenimind_app/pages/profile.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/core/auth/auth_service.dart';
@@ -31,6 +32,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   bool _isSignUpLoading = false;
   bool _isSignInLoading = false;
+  bool _isFullScreenLoading = false;
 
   final AuthService _authService = AuthService();
 
@@ -85,7 +87,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       return;
     }
 
-    setState(() => _isSignInLoading = true);
+    setState(() {
+      _isSignInLoading = true;
+      _isFullScreenLoading = true;
+    });
 
     try {
       final result = await _authService.login(
@@ -104,7 +109,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     } catch (e) {
       _showSnackBar('Erro de conexão: ${e.toString()}');
     } finally {
-      setState(() => _isSignInLoading = false);
+      setState(() {
+        _isSignInLoading = false;
+        _isFullScreenLoading = false;
+      });
     }
   }
 
@@ -122,50 +130,54 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: SafeArea(
-        child: Stack(
-          children: [
-            LoginHeader(screenWidth: screenWidth),
-            Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: EdgeInsets.only(top: screenHeight * 0.15),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      AnimatedLoginCard(
-                        tabController: _tabController,
-                        emailCreateController: _emailCreateController,
-                        passwordCreateController: _passwordCreateController,
-                        emailCreateFocusNode: _emailCreateFocusNode,
-                        passwordCreateFocusNode: _passwordCreateFocusNode,
-                        passwordCreateVisible: _passwordCreateVisible,
-                        onPasswordCreateVisibilityChanged: (visible) {
-                          setState(() => _passwordCreateVisible = visible);
-                        },
-                        isSignUpLoading: _isSignUpLoading,
-                        onSignUp: _handleSignUp,
-                        emailController: _emailController,
-                        passwordController: _passwordController,
-                        emailFocusNode: _emailFocusNode,
-                        passwordFocusNode: _passwordFocusNode,
-                        passwordVisible: _passwordVisible,
-                        onPasswordVisibilityChanged: (visible) {
-                          setState(() => _passwordVisible = visible);
-                        },
-                        isSignInLoading: _isSignInLoading,
-                        onSignIn: _handleSignIn,
-                        screenWidth: screenWidth,
-                        screenHeight: screenHeight,
-                        isTablet: isTablet,
-                      ),
-                    ],
+      body: LoadingOverlay(
+        isLoading: _isFullScreenLoading,
+        message: 'Conectando com o servidor...',
+        child: SafeArea(
+          child: Stack(
+            children: [
+              LoginHeader(screenWidth: screenWidth),
+              Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: screenHeight * 0.15),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedLoginCard(
+                          tabController: _tabController,
+                          emailCreateController: _emailCreateController,
+                          passwordCreateController: _passwordCreateController,
+                          emailCreateFocusNode: _emailCreateFocusNode,
+                          passwordCreateFocusNode: _passwordCreateFocusNode,
+                          passwordCreateVisible: _passwordCreateVisible,
+                          onPasswordCreateVisibilityChanged: (visible) {
+                            setState(() => _passwordCreateVisible = visible);
+                          },
+                          isSignUpLoading: _isSignUpLoading,
+                          onSignUp: _handleSignUp,
+                          emailController: _emailController,
+                          passwordController: _passwordController,
+                          emailFocusNode: _emailFocusNode,
+                          passwordFocusNode: _passwordFocusNode,
+                          passwordVisible: _passwordVisible,
+                          onPasswordVisibilityChanged: (visible) {
+                            setState(() => _passwordVisible = visible);
+                          },
+                          isSignInLoading: _isSignInLoading,
+                          onSignIn: _handleSignIn,
+                          screenWidth: screenWidth,
+                          screenHeight: screenHeight,
+                          isTablet: isTablet,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

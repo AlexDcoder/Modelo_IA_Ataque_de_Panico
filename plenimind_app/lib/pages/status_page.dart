@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:plenimind_app/components/status/app_drawer.dart';
 import 'dart:async';
 import 'package:plenimind_app/schemas/request/vital_data.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
 import 'package:plenimind_app/service/user_service.dart';
 import 'package:plenimind_app/service/vital_data_service.dart';
 import 'package:plenimind_app/service/notification_service.dart';
-import 'package:plenimind_app/components/app_drawer.dart';
 import 'package:plenimind_app/utils/fake_data_generator.dart';
 import 'package:plenimind_app/schemas/response/user_personal_request.dart';
+import 'package:plenimind_app/components/utils/loading_overlay.dart';
 
 class StatusPage extends StatefulWidget {
   static const String routePath = '/status';
@@ -32,6 +33,7 @@ class _StatusPageState extends State<StatusPage> {
   );
 
   bool _isLoading = true;
+  bool _isRefreshing = false;
   String _errorMessage = '';
   String _userEmail = 'Carregando...';
   UserPersonalDataResponse? _userData;
@@ -79,7 +81,6 @@ class _StatusPageState extends State<StatusPage> {
     });
   }
 
-  // ✅ CORREÇÃO: Método para SEMPRE enviar dados vitais para o banco
   Future<void> _sendVitalDataToServer(UserVitalData vitalData) async {
     try {
       await _authManager.reloadTokens();
@@ -90,7 +91,6 @@ class _StatusPageState extends State<StatusPage> {
         throw Exception('Usuário não autenticado');
       }
 
-      // ✅ SEMPRE enviar dados para o banco, independente de ter feedback ou não
       final result = await _vitalDataService.createOrUpdateVitalData(
         userId,
         vitalData,
@@ -122,34 +122,11 @@ class _StatusPageState extends State<StatusPage> {
         throw Exception('Usuário não autenticado');
       }
 
-      UserVitalData currentVitalData;
+      // ✅ CORREÇÃO: SEMPRE gerar novos dados simulados
+      final currentVitalData =
+          FakeDataGenerator.generateFakeVitalDataWithPanicChance();
 
-      // ✅ CORREÇÃO: Tentar buscar dados reais do servidor primeiro
-      final vitalDataResponse = await _vitalDataService.getUserVitalData(
-        userId,
-        token,
-      );
-
-      if (vitalDataResponse != null) {
-        // Usar dados reais do servidor
-        currentVitalData = UserVitalData(
-          heartRate: vitalDataResponse.heartRate,
-          respirationRate: vitalDataResponse.respirationRate,
-          accelStd: vitalDataResponse.accelStd,
-          spo2: vitalDataResponse.spo2,
-          stressLevel: vitalDataResponse.stressLevel,
-        );
-        debugPrint('✅ Dados vitais carregados do servidor');
-      } else {
-        // ✅ CORREÇÃO: Gerar novos dados fake e enviar para o servidor
-        currentVitalData = FakeDataGenerator.generateFakeVitalData();
-        debugPrint('🔄 Gerando novos dados vitais simulados');
-
-        // ✅ IMPORTANTE: Salvar os dados gerados no servidor
-        await _sendVitalDataToServer(currentVitalData);
-      }
-
-      // ✅ CORREÇÃO: Atualizar interface com novos dados
+      // ✅ CORREÇÃO: Atualizar interface IMEDIATAMENTE
       if (mounted) {
         setState(() {
           _vitalData = currentVitalData;
@@ -157,7 +134,10 @@ class _StatusPageState extends State<StatusPage> {
         });
       }
 
-      // ✅ CORREÇÃO: Processar dados com IA para detecção de emergência
+      // ✅ CORREÇÃO: Enviar para o servidor em segundo plano
+      await _sendVitalDataToServer(currentVitalData);
+
+      // ✅ Processar notificações
       await _notificationService.processVitalDataAndNotify(
         userId,
         currentVitalData,
@@ -165,7 +145,7 @@ class _StatusPageState extends State<StatusPage> {
       );
 
       debugPrint(
-        '🔄 Dados vitais atualizados na interface: '
+        '🔄 Dados vitais NOVOS gerados: '
         'HR: ${_vitalData.heartRate.toStringAsFixed(1)}, '
         'RR: ${_vitalData.respirationRate.toStringAsFixed(1)}',
       );
@@ -189,7 +169,6 @@ class _StatusPageState extends State<StatusPage> {
         throw Exception('Usuário não autenticado');
       }
 
-      // Carregar dados do usuário para obter detection_time
       final userResponse = await _userService.getCurrentUser();
       if (userResponse != null) {
         setState(() {
@@ -198,47 +177,28 @@ class _StatusPageState extends State<StatusPage> {
         });
       }
 
-      // ✅ CORREÇÃO: Carregar dados vitais iniciais e garantir que existam no servidor
-      final vitalDataResponse = await _vitalDataService.getUserVitalData(
-        userId,
-        token,
+      // ✅ CORREÇÃO: Gerar dados iniciais simulados
+      final fakeVitalData =
+          FakeDataGenerator.generateFakeVitalDataWithPanicChance();
+      setState(() {
+        _vitalData = fakeVitalData;
+        _lastUpdateTime = DateTime.now();
+      });
+
+      debugPrint(
+        '🔄 Criando dados vitais iniciais no servidor (com 40% chance de ataque)',
       );
 
-      if (vitalDataResponse != null) {
-        setState(() {
-          _vitalData = UserVitalData(
-            heartRate: vitalDataResponse.heartRate,
-            respirationRate: vitalDataResponse.respirationRate,
-            accelStd: vitalDataResponse.accelStd,
-            spo2: vitalDataResponse.spo2,
-            stressLevel: vitalDataResponse.stressLevel,
-          );
-          _lastUpdateTime = DateTime.now();
-        });
-        debugPrint('✅ Dados vitais iniciais carregados do servidor');
-      } else {
-        // ✅ CORREÇÃO: Se não há dados, gerar e salvar no servidor
-        final fakeVitalData = FakeDataGenerator.generateFakeVitalData();
-        setState(() {
-          _vitalData = fakeVitalData;
-          _lastUpdateTime = DateTime.now();
-        });
+      await _sendVitalDataToServer(fakeVitalData);
 
-        debugPrint('🔄 Criando dados vitais iniciais no servidor');
-
-        // ✅ IMPORTANTE: Salvar dados iniciais no servidor
-        await _sendVitalDataToServer(fakeVitalData);
-      }
-
-      // Iniciar polling com detection_time após carregar userData
       _startPollingWithDetectionTime();
 
       setState(() {
         _isLoading = false;
       });
     } catch (e) {
-      // ✅ CORREÇÃO: Mesmo em caso de erro, garantir que temos dados para mostrar
-      final fakeVitalData = FakeDataGenerator.generateFakeVitalData();
+      final fakeVitalData =
+          FakeDataGenerator.generateFakeVitalDataWithPanicChance();
       setState(() {
         _vitalData = fakeVitalData;
         _isLoading = false;
@@ -248,14 +208,14 @@ class _StatusPageState extends State<StatusPage> {
 
       debugPrint('⚠️ Erro ao carregar dados, usando fallback: $e');
 
-      // Iniciar polling mesmo com erro
       _startPollingWithDetectionTime();
     }
   }
 
-  // ✅ NOVO: Método para forçar atualização manual
   Future<void> _refreshData() async {
+    setState(() => _isRefreshing = true);
     await _loadVitalDataAndProcess();
+    setState(() => _isRefreshing = false);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Dados atualizados!'),
@@ -275,10 +235,9 @@ class _StatusPageState extends State<StatusPage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
         actions: [
-          // ✅ NOVO: Botão para atualização manual
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _refreshData,
+            onPressed: _isLoading || _isRefreshing ? null : _refreshData,
             tooltip: 'Atualizar dados',
           ),
         ],
@@ -289,43 +248,49 @@ class _StatusPageState extends State<StatusPage> {
         screenHeight: screenHeight,
       ),
 
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _errorMessage.isNotEmpty
-              ? Center(
-                child: Padding(
-                  padding: EdgeInsets.all(screenWidth * 0.05),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.warning,
-                        size: screenWidth * 0.15,
-                        color: Colors.orange,
-                      ),
-                      SizedBox(height: screenHeight * 0.02),
-                      Text(
-                        _errorMessage,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          color: Colors.grey[700],
+      body: LoadingOverlay(
+        isLoading: _isRefreshing,
+        message: 'Atualizando dados de saúde...',
+        child:
+            _isLoading
+                ? const LoadingScreen(
+                  message: 'Carregando seus dados de saúde...',
+                )
+                : _errorMessage.isNotEmpty
+                ? Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(screenWidth * 0.05),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.warning,
+                          size: screenWidth * 0.15,
+                          color: Colors.orange,
                         ),
-                      ),
-                      SizedBox(height: screenHeight * 0.03),
-                      SizedBox(
-                        width: screenWidth * 0.6,
-                        child: ElevatedButton(
-                          onPressed: _loadUserData,
-                          child: const Text('Tentar Novamente'),
+                        SizedBox(height: screenHeight * 0.02),
+                        Text(
+                          _errorMessage,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            color: Colors.grey[700],
+                          ),
                         ),
-                      ),
-                    ],
+                        SizedBox(height: screenHeight * 0.03),
+                        SizedBox(
+                          width: screenWidth * 0.6,
+                          child: ElevatedButton(
+                            onPressed: _loadUserData,
+                            child: const Text('Tentar Novamente'),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              )
-              : _buildStatusGrid(context),
+                )
+                : _buildStatusGrid(context),
+      ),
     );
   }
 
@@ -354,15 +319,6 @@ class _StatusPageState extends State<StatusPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Bem-vindo, $_userEmail!',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                  fontSize: screenWidth * 0.06,
-                ),
-              ),
-              // ✅ NOVO: Indicador de última atualização
               if (_lastUpdateTime != null)
                 Tooltip(
                   message: 'Última atualização: ${_lastUpdateTime!.toString()}',
@@ -564,7 +520,6 @@ class _StatusPageState extends State<StatusPage> {
               ),
               textAlign: TextAlign.center,
             ),
-            // ✅ NOVO: Indicador visual de que os dados estão sendo atualizados
             SizedBox(height: screenHeight * 0.005),
             Container(
               height: 2,

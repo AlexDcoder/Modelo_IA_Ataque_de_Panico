@@ -10,6 +10,7 @@ import 'package:plenimind_app/service/user_service.dart';
 import 'package:plenimind_app/schemas/request/personal_data.dart';
 import 'package:plenimind_app/core/auth/auth_service.dart';
 import 'package:plenimind_app/core/auth/permission_manager.dart';
+import 'package:plenimind_app/components/utils/loading_overlay.dart';
 
 class ContactPage extends StatefulWidget {
   static const String routePath = '/contacts';
@@ -24,6 +25,7 @@ class _ContactPageState extends State<ContactPage> {
   List<EmergencyContact> _emergencyContacts = [];
   final Set<String> _selectedContactIds = {};
   bool _isLoading = true;
+  bool _isSaving = false;
   bool _permissionDenied = false;
   bool _termsAccepted = false;
 
@@ -132,8 +134,6 @@ class _ContactPageState extends State<ContactPage> {
       setState(() {
         _termsAccepted = true;
       });
-      // ✅ AGORA: Não salva automaticamente após aceitar termos
-      // O usuário deve clicar explicitamente no botão salvar
       _showSnackBar('Termos aceitos! Agora você pode salvar seus contatos.');
     } else {
       debugPrint(
@@ -146,13 +146,13 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   Future<void> _saveSelection() async {
-    // ✅ CORREÇÃO: Não navega para termos automaticamente
-    // Usuário deve aceitar termos explicitamente antes de salvar
     if (!_termsAccepted) {
       _showSnackBar('Aceite os termos e condições primeiro');
       await _navigateToTerms();
-      return; // Impede o salvamento até que os termos sejam aceitos
+      return;
     }
+
+    setState(() => _isSaving = true);
 
     try {
       final selected =
@@ -241,6 +241,10 @@ class _ContactPageState extends State<ContactPage> {
       }
     } catch (e) {
       _showSnackBar('Erro ao salvar: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -406,152 +410,153 @@ class _ContactPageState extends State<ContactPage> {
           ],
         ),
         actions: [
-          // ✅ CORREÇÃO: Botão salvar só aparece se termos foram aceitos
           if (_termsAccepted && _selectedContactIds.isNotEmpty)
             IconButton(
               icon: Icon(Icons.save, size: screenWidth * 0.06),
-              onPressed: _saveSelection,
+              onPressed: _isSaving ? null : _saveSelection,
               tooltip: 'Salvar contatos',
             ),
         ],
       ),
-      body:
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _permissionDenied
-              ? _buildPermissionDeniedUI(context)
-              : Column(
-                children: [
-                  if (_emergencyContacts.isNotEmpty) ...[
-                    Container(
-                      width: double.infinity,
-                      color: colorScheme.primaryContainer.withOpacity(0.3),
-                      padding: EdgeInsets.all(screenWidth * 0.04),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.emergency,
-                                color: colorScheme.error,
-                                size: screenWidth * 0.06,
-                              ),
-                              SizedBox(width: screenWidth * 0.02),
-                              Text(
-                                'Seus Contatos de Emergência:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.onSurface,
-                                  fontSize: screenWidth * 0.04,
+      body: LoadingOverlay(
+        isLoading: _isSaving,
+        message: 'Criando sua conta...',
+        child:
+            _isLoading
+                ? const LoadingScreen(message: 'Carregando seus contatos...')
+                : _permissionDenied
+                ? _buildPermissionDeniedUI(context)
+                : Column(
+                  children: [
+                    if (_emergencyContacts.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        color: colorScheme.primaryContainer.withOpacity(0.3),
+                        padding: EdgeInsets.all(screenWidth * 0.04),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.emergency,
+                                  color: colorScheme.error,
+                                  size: screenWidth * 0.06,
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: screenHeight * 0.01),
-                          ..._emergencyContacts.map((contact) {
-                            return ContactItem(
-                              contact: contact,
-                              isSelected: true,
-                              onChanged: (value) {},
-                              isDisabled: true,
-                              showPriority: true,
-                              screenWidth: screenWidth,
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-                    const Divider(height: 1),
-                  ],
-
-                  // ✅ CORREÇÃO: Só mostra prompt de termos se houver contatos selecionados
-                  if (_selectedContactIds.isNotEmpty && !_termsAccepted) ...[
-                    Expanded(child: _buildTermsPromptUI(context)),
-                  ] else ...[
-                    Padding(
-                      padding: EdgeInsets.all(screenWidth * 0.04),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.contacts,
-                            color: colorScheme.onSurface,
-                            size: screenWidth * 0.06,
-                          ),
-                          SizedBox(width: screenWidth * 0.02),
-                          Text(
-                            'Escolha contatos do seu celular:',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: colorScheme.onSurface,
-                              fontSize: screenWidth * 0.04,
+                                SizedBox(width: screenWidth * 0.02),
+                                Text(
+                                  'Seus Contatos de Emergência:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                    fontSize: screenWidth * 0.04,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                            SizedBox(height: screenHeight * 0.01),
+                            ..._emergencyContacts.map((contact) {
+                              return ContactItem(
+                                contact: contact,
+                                isSelected: true,
+                                onChanged: (value) {},
+                                isDisabled: true,
+                                showPriority: true,
+                                screenWidth: screenWidth,
+                              );
+                            }),
+                          ],
+                        ),
                       ),
-                    ),
+                      const Divider(height: 1),
+                    ],
 
-                    Expanded(
-                      child:
-                          _deviceContacts.isEmpty
-                              ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.contacts,
-                                      size: screenWidth * 0.15,
-                                      color: colorScheme.onSurface.withOpacity(
-                                        0.6,
+                    if (_selectedContactIds.isNotEmpty && !_termsAccepted) ...[
+                      Expanded(child: _buildTermsPromptUI(context)),
+                    ] else ...[
+                      Padding(
+                        padding: EdgeInsets.all(screenWidth * 0.04),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.contacts,
+                              color: colorScheme.onSurface,
+                              size: screenWidth * 0.06,
+                            ),
+                            SizedBox(width: screenWidth * 0.02),
+                            Text(
+                              'Escolha contatos do seu celular:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onSurface,
+                                fontSize: screenWidth * 0.04,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Expanded(
+                        child:
+                            _deviceContacts.isEmpty
+                                ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.contacts,
+                                        size: screenWidth * 0.15,
+                                        color: colorScheme.onSurface
+                                            .withOpacity(0.6),
                                       ),
-                                    ),
-                                    SizedBox(height: screenHeight * 0.02),
-                                    Text(
-                                      'Nenhum contato encontrado',
-                                      style: TextStyle(
-                                        color: colorScheme.onSurface,
-                                        fontSize: screenWidth * 0.04,
-                                      ),
-                                    ),
-                                    SizedBox(height: screenHeight * 0.02),
-                                    TextButton(
-                                      onPressed: _loadData,
-                                      child: Text(
-                                        'Tentar novamente',
+                                      SizedBox(height: screenHeight * 0.02),
+                                      Text(
+                                        'Nenhum contato encontrado',
                                         style: TextStyle(
+                                          color: colorScheme.onSurface,
                                           fontSize: screenWidth * 0.04,
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                              : ListView.builder(
-                                itemCount: _deviceContacts.length,
-                                itemBuilder: (context, index) {
-                                  final contact = _deviceContacts[index];
-                                  final isSelected = _selectedContactIds
-                                      .contains(contact.id);
-
-                                  return ContactItem(
-                                    contact: contact,
-                                    isSelected: isSelected,
-                                    onChanged:
-                                        (selected) => _toggleContact(
-                                          contact.id,
-                                          selected,
+                                      SizedBox(height: screenHeight * 0.02),
+                                      TextButton(
+                                        onPressed: _loadData,
+                                        child: Text(
+                                          'Tentar novamente',
+                                          style: TextStyle(
+                                            fontSize: screenWidth * 0.04,
+                                          ),
                                         ),
-                                    isDisabled:
-                                        !isSelected &&
-                                        _selectedContactIds.length >= 5,
-                                    screenWidth: screenWidth,
-                                  );
-                                },
-                              ),
-                    ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                                : ListView.builder(
+                                  itemCount: _deviceContacts.length,
+                                  itemBuilder: (context, index) {
+                                    final contact = _deviceContacts[index];
+                                    final isSelected = _selectedContactIds
+                                        .contains(contact.id);
+
+                                    return ContactItem(
+                                      contact: contact,
+                                      isSelected: isSelected,
+                                      onChanged:
+                                          (selected) => _toggleContact(
+                                            contact.id,
+                                            selected,
+                                          ),
+                                      isDisabled:
+                                          !isSelected &&
+                                          _selectedContactIds.length >= 5,
+                                      screenWidth: screenWidth,
+                                    );
+                                  },
+                                ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
+                ),
+      ),
     );
   }
 }

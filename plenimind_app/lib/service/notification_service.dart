@@ -16,6 +16,13 @@ class NotificationService {
   static const String _panicDetectionChannel = 'panic_detection_channel';
   static const String _normalStatusChannel = 'normal_status_channel';
 
+  // ✅ CORREÇÃO: Instância estática para acesso no método estático
+  static NotificationService? _instance;
+
+  NotificationService() {
+    _instance = this;
+  }
+
   // Inicializar notificações
   Future<void> initialize() async {
     try {
@@ -61,7 +68,7 @@ class NotificationService {
     }
   }
 
-  // ✅ CORREÇÃO: Processar dados vitais SEMPRE, independente do feedback
+  // ✅ VERIFICAÇÃO: Processar dados vitais SEM enviar feedback automático em casos normais
   Future<void> processVitalDataAndNotify(
     String uid,
     UserVitalData vitalData,
@@ -73,12 +80,11 @@ class NotificationService {
       final panicDetected = prediction?['panic_attack_detected'] ?? false;
       final confidence = prediction?['confidence'] ?? 0.0;
 
-      debugPrint(
-        '🧠 IA analisou dados - Ataque: $panicDetected, Confiança: ${(confidence * 100).toStringAsFixed(1)}%',
-      );
+      // ✅ ATUALIZADO: Log simplificado sem mostrar confiança
+      debugPrint('🧠 IA analisou dados - Ataque: $panicDetected');
 
       if (panicDetected && confidence > 0.7) {
-        // ✅ Mostrar notificação interativa de emergência
+        // ✅ Mostrar notificação interativa de emergência para confirmação do usuário
         await _showInteractivePanicNotification(
           uid,
           vitalData,
@@ -90,11 +96,11 @@ class NotificationService {
           '🚨 Notificação de emergência enviada - Aguardando resposta do usuário',
         );
       } else {
-        // ✅ CORREÇÃO: Mesmo em casos normais, mostrar notificação informativa
-        // mas NÃO enviar feedback automático para IA
-        await _showNormalStatusNotification(uid, vitalData, token);
+        // ✅ ATUALIZADO: Apenas logar o status normal - NÃO enviar feedback automático
+        debugPrint('✅ Status normal - Dados processados, SEM feedback para IA');
 
-        debugPrint('✅ Status normal - Dados processados, sem feedback para IA');
+        // ✅ Apenas atualizar interface (isso será feito pelo StatusPage através do polling)
+        // ✅ O banco de dados já foi atualizado pelo VitalDataService no StatusPage
       }
     } catch (e) {
       debugPrint('❌ Error processing vital data: $e');
@@ -150,6 +156,7 @@ class NotificationService {
     }
   }
 
+  // ✅ VERIFICAÇÃO: Método estático que só envia feedback se houver detecção de pânico
   static Future<void> _onActionReceivedMethod(
     ReceivedAction receivedAction,
   ) async {
@@ -175,56 +182,60 @@ class NotificationService {
         stressLevel: double.parse(payload['stress_level'] ?? '0'),
       );
 
-      final notificationService = NotificationService();
-      final callService = CallService();
-      final feedbackService = FeedbackService();
+      // ✅ VERIFICAÇÃO: Acessar a instância do NotificationService para usar _feedbackService
+      if (_instance != null) {
+        final notificationService = _instance!;
+        final callService = CallService();
 
-      if (receivedAction.buttonKeyPressed == 'confirm_emergency') {
-        debugPrint('✅ Usuário confirmou emergência - Acionando contatos');
+        if (receivedAction.buttonKeyPressed == 'confirm_emergency') {
+          debugPrint('✅ Usuário confirmou emergência - Acionando contatos');
 
-        // Iniciar chamadas de emergência
-        await callService.startEmergencyCall(uid);
+          // Iniciar chamadas de emergência
+          await callService.startEmergencyCall(uid);
 
-        // ✅ Enviar feedback positivo APENAS quando usuário confirma
-        await feedbackService.sendFeedback(
-          FeedbackDTO(
-            uid: uid,
-            features: {
-              'heart_rate': vitalData.heartRate,
-              'respiration_rate': vitalData.respirationRate,
-              'accel_std': vitalData.accelStd,
-              'spo2': vitalData.spo2,
-              'stress_level': vitalData.stressLevel,
-            },
-            userFeedback: 1,
-          ),
-          token,
-        );
+          // ✅ VERIFICAÇÃO: Só enviar feedback positivo se foi detecção de pânico
+          await notificationService._feedbackService.sendFeedback(
+            FeedbackDTO(
+              uid: uid,
+              features: {
+                'heart_rate': vitalData.heartRate,
+                'respiration_rate': vitalData.respirationRate,
+                'accel_std': vitalData.accelStd,
+                'spo2': vitalData.spo2,
+                'stress_level': vitalData.stressLevel,
+              },
+              userFeedback: 1, // Feedback positivo
+            ),
+            token,
+          );
 
-        debugPrint('📊 Feedback positivo enviado para IA');
-      } else if (receivedAction.buttonKeyPressed == 'false_alarm') {
-        debugPrint('❌ Usuário reportou falso alarme - Atualizando modelo');
+          debugPrint('📊 Feedback positivo enviado para IA');
+        } else if (receivedAction.buttonKeyPressed == 'false_alarm') {
+          debugPrint('❌ Usuário reportou falso alarme - Atualizando modelo');
 
-        // ✅ Enviar feedback negativo APENAS quando usuário reporta falso alarme
-        await feedbackService.sendFeedback(
-          FeedbackDTO(
-            uid: uid,
-            features: {
-              'heart_rate': vitalData.heartRate,
-              'respiration_rate': vitalData.respirationRate,
-              'accel_std': vitalData.accelStd,
-              'spo2': vitalData.spo2,
-              'stress_level': vitalData.stressLevel,
-            },
-            userFeedback: 0,
-          ),
-          token,
-        );
+          // ✅ VERIFICAÇÃO: Só enviar feedback negativo se foi detecção de pânico
+          await notificationService._feedbackService.sendFeedback(
+            FeedbackDTO(
+              uid: uid,
+              features: {
+                'heart_rate': vitalData.heartRate,
+                'respiration_rate': vitalData.respirationRate,
+                'accel_std': vitalData.accelStd,
+                'spo2': vitalData.spo2,
+                'stress_level': vitalData.stressLevel,
+              },
+              userFeedback: 0, // Feedback negativo
+            ),
+            token,
+          );
 
-        debugPrint('📊 Feedback negativo enviado para IA');
+          debugPrint('📊 Feedback negativo enviado para IA');
 
-        // Mostrar confirmação de falso alarme
-        await notificationService._showFalseAlarmConfirmation();
+          // Mostrar confirmação de falso alarme
+          await notificationService._showFalseAlarmConfirmation();
+        }
+      } else {
+        debugPrint('❌ Instância do NotificationService não encontrada');
       }
     } catch (e) {
       debugPrint('❌ Erro ao processar ação da notificação: $e');
@@ -254,28 +265,6 @@ class NotificationService {
       debugPrint('⚠️ Modo fallback - Chamadas iniciadas sem feedback');
     } catch (e) {
       debugPrint('Error showing panic notification: $e');
-    }
-  }
-
-  Future<void> _showNormalStatusNotification(
-    String uid,
-    UserVitalData vitalData,
-    String token,
-  ) async {
-    try {
-      await AwesomeNotifications().createNotification(
-        content: NotificationContent(
-          id: _generateNotificationId(),
-          channelKey: _normalStatusChannel,
-          title: '✅ Status de Saúde Normal',
-          body: 'Seus dados vitais estão dentro dos parâmetros normais.',
-          notificationLayout: NotificationLayout.Default,
-        ),
-      );
-
-      debugPrint('💚 Notificação de status normal enviada');
-    } catch (e) {
-      debugPrint('Error showing normal notification: $e');
     }
   }
 
