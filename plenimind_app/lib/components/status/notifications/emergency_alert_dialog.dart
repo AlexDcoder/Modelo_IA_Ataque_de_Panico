@@ -63,6 +63,11 @@ class _EmergencyAlertDialogState extends State<EmergencyAlertDialog> {
               'Deseja acionar os contatos de emergência?',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
+            SizedBox(height: 10),
+            Text(
+              '⚠️ O aplicativo irá ligar automaticamente para seus contatos de emergência.',
+              style: TextStyle(fontSize: 14, color: Colors.red),
+            ),
           ],
         ),
         actions: [
@@ -70,7 +75,10 @@ class _EmergencyAlertDialogState extends State<EmergencyAlertDialog> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: widget.onFalseAlarm,
+                onPressed: () {
+                  setState(() => _isHandlingResponse = true);
+                  widget.onFalseAlarm();
+                },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.grey,
                   side: const BorderSide(color: Colors.grey),
@@ -90,7 +98,10 @@ class _EmergencyAlertDialogState extends State<EmergencyAlertDialog> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: widget.onConfirm,
+                onPressed: () {
+                  setState(() => _isHandlingResponse = true);
+                  widget.onConfirm();
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                   foregroundColor: Colors.white,
@@ -104,7 +115,7 @@ class _EmergencyAlertDialogState extends State<EmergencyAlertDialog> {
                   children: [
                     Icon(Icons.emergency),
                     SizedBox(width: 8),
-                    Text('SIM, EMERGÊNCIA REAL'),
+                    Text('SIM, LIGAR PARA CONTATOS'),
                   ],
                 ),
               ),

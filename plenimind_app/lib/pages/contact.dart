@@ -4,7 +4,6 @@ import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/contact/contact_item.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/service/user_service.dart';
 import 'package:plenimind_app/schemas/request/personal_data.dart';
@@ -40,25 +39,15 @@ class _ContactPageState extends State<ContactPage> {
   @override
   void initState() {
     super.initState();
-    _restorePermissionsIfAccepted();
-    _loadData();
     _checkTermsStatus();
+    _loadData();
   }
 
-  Future<void> _restorePermissionsIfAccepted() async {
-    final permissionsStatus = await PermissionManager.getAllPermissionsStatus();
-
-    if (permissionsStatus['contacts_permission'] == true) {
-      debugPrint('✅ Restaurando permissão de contatos aceita anteriormente');
-    }
-
-    if (permissionsStatus['notification_permission'] == true) {
-      debugPrint('✅ Notificações já foram permitidas anteriormente');
-    }
-
-    if (permissionsStatus['phone_permission'] == true) {
-      debugPrint('✅ Chamadas telefônicas já foram permitidas anteriormente');
-    }
+  Future<void> _checkTermsStatus() async {
+    final termsAccepted = await PermissionManager.getTermsAccepted();
+    setState(() {
+      _termsAccepted = termsAccepted;
+    });
   }
 
   @override
@@ -74,23 +63,27 @@ class _ContactPageState extends State<ContactPage> {
     }
   }
 
-  Future<void> _checkTermsStatus() async {
-    final termsAccepted = await PermissionManager.getTermsAccepted();
-    setState(() {
-      _termsAccepted = termsAccepted;
-    });
-  }
-
   Future<void> _loadData() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
+      // Verificar se a permissão já foi concedida nos termos
+      final contactsPermission =
+          await PermissionManager.getContactsPermissionGranted();
+
+      if (!contactsPermission) {
+        setState(() {
+          _permissionDenied = true;
+          _deviceContacts = [];
+        });
+        return;
+      }
+
       final emergencyContacts = await ContactService.getEmergencyContacts(
         _email,
       );
-
       final deviceContacts = await ContactService.getDeviceContacts();
 
       final emergencyPhones = emergencyContacts.map((c) => c.phone).toSet();
@@ -135,6 +128,8 @@ class _ContactPageState extends State<ContactPage> {
         _termsAccepted = true;
       });
       _showSnackBar('Termos aceitos! Agora você pode salvar seus contatos.');
+      // Recarregar dados após aceitar termos
+      await _loadData();
     } else {
       debugPrint(
         '⚠️ Usuário voltou da tela de Termos sem aceitar. Limpando seleção.',
@@ -145,6 +140,7 @@ class _ContactPageState extends State<ContactPage> {
     }
   }
 
+  // ATUALIZAR o método _saveSelection() na ContactPage
   Future<void> _saveSelection() async {
     if (!_termsAccepted) {
       _showSnackBar('Aceite os termos e condições primeiro');
@@ -181,37 +177,97 @@ class _ContactPageState extends State<ContactPage> {
       final emergencyContactsDTO =
           contactsWithPriority.map((contact) => contact.toDTO()).toList();
 
-      final userData = UserPersonalData(
-        username: _username,
-        email: _email,
-        password: _password,
-        detectionTime: _detectionTime,
-        emergencyContacts: emergencyContactsDTO,
-      );
+      // ✅ VERIFICAR SE É CADASTRO NOVO OU EDIÇÃO
+      final isUserLoggedIn = _authService.isLoggedIn;
+      debugPrint('🔍 [CONTACT_PAGE] Usuário logado: $isUserLoggedIn');
 
-      final userResponse = await _userService.createUser(userData);
+      String userId;
 
-      if (userResponse != null) {
-        await ContactService.saveEmergencyContacts(
-          contactsWithPriority,
-          _email,
+      if (isUserLoggedIn) {
+        // ✅ EDIÇÃO: Atualizar apenas contatos
+        debugPrint(
+          '🔄 [CONTACT_PAGE] Modo EDIÇÃO - Atualizando contatos existentes',
         );
 
-        try {
-          debugPrint('🔐 Tentando autenticação automática após cadastro...');
-          final loginResult = await _authService.login(_email, _password);
+        userId = _authService.userId!;
 
-          if (loginResult != null) {
-            debugPrint('✅ Usuário autenticado automaticamente após cadastro');
-            _showSnackBar('Conta criada com sucesso!');
+        final updateResult = await _userService.updateUserEmergencyContacts(
+          uid: userId,
+          emergencyContacts: emergencyContactsDTO,
+        );
 
-            if (mounted) {
-              Navigator.pushReplacementNamed(context, StatusPage.routePath);
+        if (updateResult != null) {
+          // ✅ SALVAR LOCALMENTE COM USER_ID CORRETO
+          await ContactService.saveAndSyncEmergencyContacts(
+            contactsWithPriority,
+            userId,
+          );
+          _showSnackBar('Contatos de emergência atualizados com sucesso!');
+
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, StatusPage.routePath);
+          }
+        } else {
+          throw Exception('Falha ao atualizar contatos');
+        }
+      } else {
+        // ✅ CADASTRO NOVO: Criar usuário completo
+        debugPrint('🔄 [CONTACT_PAGE] Modo CADASTRO - Criando novo usuário');
+
+        final userData = UserPersonalData(
+          username: _username,
+          email: _email,
+          password: _password,
+          detectionTime: _detectionTime,
+          emergencyContacts: emergencyContactsDTO,
+        );
+
+        final userResponse = await _userService.createUser(userData);
+
+        if (userResponse != null) {
+          userId = userResponse.uid;
+
+          // ✅ SALVAR LOCALMENTE COM O NOVO USER_ID
+          await ContactService.saveAndSyncEmergencyContacts(
+            contactsWithPriority,
+            userId,
+          );
+
+          try {
+            debugPrint(
+              '🔐 [CONTACT_PAGE] Tentando autenticação automática após cadastro...',
+            );
+            final loginResult = await _authService.login(_email, _password);
+
+            if (loginResult != null) {
+              debugPrint(
+                '✅ [CONTACT_PAGE] Usuário autenticado automaticamente após cadastro',
+              );
+              _showSnackBar('Conta criada com sucesso!');
+
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, StatusPage.routePath);
+              }
+            } else {
+              debugPrint(
+                '❌ [CONTACT_PAGE] Autenticação automática falhou após cadastro',
+              );
+              _showSnackBar(
+                'Conta criada, mas login automático falhou. Faça login manualmente.',
+              );
+
+              if (mounted) {
+                Navigator.pushReplacementNamed(
+                  context,
+                  LoginPage.routePath,
+                  arguments: {'email': _email, 'autoLoginFailed': true},
+                );
+              }
             }
-          } else {
-            debugPrint('❌ Autenticação automática falhou após cadastro');
+          } catch (e) {
+            debugPrint('❌ [CONTACT_PAGE] Erro na autenticação automática: $e');
             _showSnackBar(
-              'Conta criada, mas login automático falhou. Faça login manualmente.',
+              'Conta criada, mas houve erro ao autenticar. Tente fazer login.',
             );
 
             if (mounted) {
@@ -222,24 +278,12 @@ class _ContactPageState extends State<ContactPage> {
               );
             }
           }
-        } catch (e) {
-          debugPrint('❌ Erro na autenticação automática: $e');
-          _showSnackBar(
-            'Conta criada, mas houve erro ao autenticar. Tente fazer login.',
-          );
-
-          if (mounted) {
-            Navigator.pushReplacementNamed(
-              context,
-              LoginPage.routePath,
-              arguments: {'email': _email, 'autoLoginFailed': true},
-            );
-          }
+        } else {
+          _showSnackBar('Erro ao criar conta. Tente novamente.');
         }
-      } else {
-        _showSnackBar('Erro ao criar conta. Tente novamente.');
       }
     } catch (e) {
+      debugPrint('❌ [CONTACT_PAGE] Erro ao salvar: $e');
       _showSnackBar('Erro ao salvar: $e');
     } finally {
       if (mounted) {
@@ -288,7 +332,7 @@ class _ContactPageState extends State<ContactPage> {
             ),
             SizedBox(height: screenHeight * 0.02),
             Text(
-              'Permissão de contatos negada.',
+              'Permissão de contatos não concedida.',
               style: TextStyle(
                 fontSize: screenWidth * 0.045,
                 fontWeight: FontWeight.w600,
@@ -297,7 +341,7 @@ class _ContactPageState extends State<ContactPage> {
             ),
             SizedBox(height: screenHeight * 0.01),
             Text(
-              'Ative a permissão em Configurações para permitir que o app leia seus contatos.',
+              'Aceite os termos e condições para conceder acesso aos seus contatos.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: colorScheme.onSurface.withOpacity(0.7),
@@ -309,9 +353,9 @@ class _ContactPageState extends State<ContactPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ElevatedButton(
-                  onPressed: () => openAppSettings(),
+                  onPressed: _navigateToTerms,
                   child: Text(
-                    'Abrir configurações',
+                    'Aceitar Termos',
                     style: TextStyle(fontSize: screenWidth * 0.035),
                   ),
                 ),

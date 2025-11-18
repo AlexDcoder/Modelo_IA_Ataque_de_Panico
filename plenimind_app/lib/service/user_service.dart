@@ -10,45 +10,216 @@ class UserService {
   final ApiClient _apiClient = ApiClient();
   final AuthManager _authManager = AuthManager();
 
-  // GET /users/ → Lista todos usuários (admin)
-  Future<Map<String, dynamic>?> getAllUsers() async {
+  Future<UserPersonalDataResponse?> updateUserProfile({
+    required String uid,
+    required String username,
+    required String email,
+  }) async {
     try {
+      debugPrint('🔄 [USER_SERVICE] Atualizando perfil para: $uid');
+      debugPrint('   📝 Novos dados - Username: $username, Email: $email');
+
       final token = _authManager.token;
       if (token == null) {
-        debugPrint('❌ Nenhum token disponível para getAllUsers');
+        debugPrint('❌ [USER_SERVICE] Token não disponível para updateProfile');
         return null;
       }
 
-      final response = await _apiClient.authenticatedGet('users', token);
+      final response = await _apiClient.authenticatedPut('users/$uid', {
+        'username': username,
+        'email': email,
+      }, token);
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        debugPrint('✅ [USER_SERVICE] Perfil atualizado com sucesso');
+        final json = jsonDecode(response.body);
+        return UserPersonalDataResponse.fromJson(json);
       } else {
         debugPrint(
-          '❌ Get all users failed: ${response.statusCode} ${response.body}',
+          '❌ [USER_SERVICE] Update profile failed: ${response.statusCode}',
         );
         return null;
       }
     } catch (e) {
-      debugPrint('❌ Get all users error: $e');
+      debugPrint('❌ [USER_SERVICE] Update profile error: $e');
       return null;
     }
   }
 
-  // ✅ CORREÇÃO: GET /users/me → Dados do usuário atual
-  Future<UserPersonalDataResponse?> getCurrentUser() async {
+  Future<UserPersonalDataResponse?> updateUserDetectionTime({
+    required String uid,
+    required String detectionTime,
+  }) async {
     try {
-      debugPrint('🐤 Buscando usuário atual...');
+      debugPrint('🔄 [USER_SERVICE] Atualizando detectionTime para: $uid');
+      debugPrint('   ⏰ Novo tempo: $detectionTime');
 
       final token = _authManager.token;
       if (token == null) {
-        debugPrint('❌ getCurrentUser: Token NULO no AuthManager');
+        debugPrint(
+          '❌ [USER_SERVICE] Token não disponível para updateDetectionTime',
+        );
         return null;
       }
 
+      final response = await _apiClient.authenticatedPut('users/$uid', {
+        'detection_time': detectionTime,
+      }, token);
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ [USER_SERVICE] DetectionTime atualizado com sucesso');
+        final json = jsonDecode(response.body);
+        return UserPersonalDataResponse.fromJson(json);
+      } else {
+        debugPrint(
+          '❌ [USER_SERVICE] Update detectionTime failed: ${response.statusCode}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ [USER_SERVICE] Update detectionTime error: $e');
+      return null;
+    }
+  }
+
+  Future<UserPersonalDataResponse?> updateUserPassword({
+    required String uid,
+    required String newPassword,
+  }) async {
+    try {
+      debugPrint('🔄 [USER_SERVICE] Atualizando senha para: $uid');
+
+      final token = _authManager.token;
+      if (token == null) {
+        debugPrint('❌ [USER_SERVICE] Token não disponível para updatePassword');
+        return null;
+      }
+
+      final response = await _apiClient.authenticatedPut('users/$uid', {
+        'password': newPassword,
+      }, token);
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ [USER_SERVICE] Senha atualizada com sucesso');
+        final json = jsonDecode(response.body);
+        return UserPersonalDataResponse.fromJson(json);
+      } else {
+        debugPrint(
+          '❌ [USER_SERVICE] Update password failed: ${response.statusCode}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ [USER_SERVICE] Update password error: $e');
+      return null;
+    }
+  }
+
+  Future<UserPersonalDataResponse?> updateUserEmergencyContacts({
+    required String uid,
+    required List<EmergencyContactDTO> emergencyContacts,
+  }) async {
+    try {
+      debugPrint('🔄 [USER_SERVICE] Atualizando contatos para: $uid');
+      debugPrint('   📞 Número de contatos: ${emergencyContacts.length}');
+
+      final token = _authManager.token;
+      if (token == null) {
+        debugPrint(
+          '❌ [USER_SERVICE] Token não disponível para updateEmergencyContacts',
+        );
+        return null;
+      }
+
+      final response = await _apiClient.authenticatedPut('users/$uid', {
+        'emergency_contact': emergencyContacts.map((e) => e.toJson()).toList(),
+      }, token);
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ [USER_SERVICE] Contatos atualizados com sucesso');
+        final json = jsonDecode(response.body);
+        return UserPersonalDataResponse.fromJson(json);
+      } else {
+        debugPrint(
+          '❌ [USER_SERVICE] Update emergencyContacts failed: ${response.statusCode}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ [USER_SERVICE] Update emergencyContacts error: $e');
+      return null;
+    }
+  }
+
+  Future<UserPersonalDataResponse?> updateUserMultipleFields({
+    required String uid,
+    String? username,
+    String? email,
+    String? password,
+    String? detectionTime,
+    List<EmergencyContactDTO>? emergencyContacts,
+  }) async {
+    try {
+      debugPrint('🔄 [USER_SERVICE] Atualizando múltiplos campos para: $uid');
+
+      final token = _authManager.token;
+      if (token == null) {
+        debugPrint(
+          '❌ [USER_SERVICE] Token não disponível para update múltiplo',
+        );
+        return null;
+      }
+
+      final updateData = <String, dynamic>{};
+
+      if (username != null) updateData['username'] = username;
+      if (email != null) updateData['email'] = email;
+      if (password != null) updateData['password'] = password;
+      if (detectionTime != null) updateData['detection_time'] = detectionTime;
+      if (emergencyContacts != null) {
+        updateData['emergency_contact'] =
+            emergencyContacts.map((e) => e.toJson()).toList();
+      }
+
       debugPrint(
-        '✅ getCurrentUser: Token disponível (${token.substring(0, 20)}...)',
+        '📝 [USER_SERVICE] Campos para atualização: ${updateData.keys}',
       );
+
+      final response = await _apiClient.authenticatedPut(
+        'users/$uid',
+        updateData,
+        token,
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ [USER_SERVICE] Múltiplos campos atualizados com sucesso');
+        final json = jsonDecode(response.body);
+        return UserPersonalDataResponse.fromJson(json);
+      } else {
+        debugPrint(
+          '❌ [USER_SERVICE] Update múltiplo failed: ${response.statusCode}',
+        );
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ [USER_SERVICE] Update múltiplo error: $e');
+      return null;
+    }
+  }
+
+  Future<UserPersonalDataResponse?> getCurrentUser() async {
+    try {
+      debugPrint('🔄 [USER_SERVICE] Buscando usuário atual...');
+
+      final token = _authManager.token;
+      if (token == null) {
+        debugPrint(
+          '❌ [USER_SERVICE] Token NULO - usuário possivelmente não autenticado',
+        );
+        return null;
+      }
+
+      debugPrint('✅ [USER_SERVICE] Token disponível, buscando dados...');
 
       final response = await _apiClient.authenticatedGet('users/me', token);
 
@@ -56,217 +227,66 @@ class UserService {
         final json = jsonDecode(response.body);
         final userResponse = UserPersonalDataResponse.fromJson(json);
 
-        debugPrint('✅ Rota /me funcionou - UserId: ${userResponse.uid}');
+        debugPrint('✅ [USER_SERVICE] Dados do usuário carregados com sucesso');
+        debugPrint('   👤 UID: ${userResponse.uid}');
+        debugPrint('   📧 Email: ${userResponse.email}');
+        debugPrint('   ⏰ Detecção: ${userResponse.detectionTime}');
+        debugPrint('   📞 Contatos: ${userResponse.emergencyContacts.length}');
+
         return userResponse;
+      } else if (response.statusCode == 401) {
+        debugPrint('🔐 [USER_SERVICE] Token inválido ou expirado');
+        await _authManager.clearTokens();
+        return null;
       } else {
         debugPrint(
-          '❌ getCurrentUser failed: ${response.statusCode} ${response.body}',
+          '❌ [USER_SERVICE] getCurrentUser failed: ${response.statusCode}',
         );
         return null;
       }
     } catch (e) {
-      debugPrint('❌ getCurrentUser error: $e');
+      debugPrint('❌ [USER_SERVICE] getCurrentUser error: $e');
       return null;
     }
   }
 
-  // GET /users/{uid} → Dados públicos de usuário
-  Future<UserPersonalDataResponse?> getUserPublic(String uid) async {
-    try {
-      final token = _authManager.token;
-      if (token == null) {
-        debugPrint('❌ Nenhum token disponível para getUserPublic');
-        return null;
-      }
-
-      final response = await _apiClient.authenticatedGet('users/$uid', token);
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        return UserPersonalDataResponse.fromJson(json);
-      } else {
-        debugPrint(
-          '❌ Get user public failed: ${response.statusCode} ${response.body}',
-        );
-        return null;
-      }
-    } catch (e) {
-      debugPrint('❌ Get user public error: $e');
-      return null;
-    }
-  }
-
-  // POST /users/ → Cria novo usuário
   Future<UserPersonalDataResponse?> createUser(UserPersonalData user) async {
     try {
-      debugPrint('🐤 Criando usuário: ${user.email}');
+      debugPrint('🔄 [USER_SERVICE] Criando usuário: ${user.email}');
 
       final response = await _apiClient.post('users', user.toJson());
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final json = jsonDecode(response.body);
 
-        debugPrint('📤 [CREATE_USER] Response Status: ${response.statusCode}');
-        debugPrint('📤 [CREATE_USER] Response Body Completo: ${response.body}');
+        debugPrint(
+          '✅ [USER_SERVICE] Usuário criado - Status: ${response.statusCode}',
+        );
+        debugPrint('✅ [USER_SERVICE] Response Body: ${response.body}');
 
         final userResponse = UserPersonalDataResponse.fromJson(json);
-
-        debugPrint('✅ Usuário criado - UID: ${userResponse.uid}');
+        debugPrint('✅ [USER_SERVICE] UID criado: ${userResponse.uid}');
         return userResponse;
       } else {
-        debugPrint('❌ Create user failed: ${response.statusCode}');
-        debugPrint('❌ Body: ${response.body}');
-        return null;
-      }
-    } catch (e) {
-      debugPrint('❌ Create user error: $e');
-      return null;
-    }
-  }
-
-  // ✅ CORREÇÃO: PUT /users/{uid} → Atualiza usuário (completo)
-  Future<UserPersonalDataResponse?> updateUser(
-    String uid,
-    UserPersonalData user,
-  ) async {
-    try {
-      final token = _authManager.token;
-      if (token == null) {
-        debugPrint('❌ Nenhum token disponível para updateUser');
-        return null;
-      }
-
-      final response = await _apiClient.authenticatedPut(
-        'users/$uid',
-        user.toJson(),
-        token,
-      );
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        return UserPersonalDataResponse.fromJson(json);
-      } else {
         debugPrint(
-          '❌ Update user failed: ${response.statusCode} ${response.body}',
+          '❌ [USER_SERVICE] Create user failed: ${response.statusCode}',
         );
+        debugPrint('❌ [USER_SERVICE] Body: ${response.body}');
         return null;
       }
     } catch (e) {
-      debugPrint('❌ Update user error: $e');
+      debugPrint('❌ [USER_SERVICE] Create user error: $e');
       return null;
     }
   }
 
-  // ✅ NOVO: Atualização parcial usando PUT com dados existentes
-  Future<UserPersonalDataResponse?> updateUserPartial(
-    String uid,
-    Map<String, dynamic> partialData,
-  ) async {
-    try {
-      final token = _authManager.token;
-      if (token == null) {
-        debugPrint('❌ Nenhum token disponível para updateUserPartial');
-        return null;
-      }
-
-      // Primeiro buscar dados atuais do usuário
-      final currentUser = await getCurrentUser();
-      if (currentUser == null) {
-        debugPrint('❌ Não foi possível obter dados atuais do usuário');
-        return null;
-      }
-
-      // Converter currentUser para UserPersonalData (mantendo dados existentes)
-      final currentUserData = UserPersonalData(
-        username: currentUser.username,
-        email: currentUser.email,
-        password: '', // Senha não é retornada, manter vazia
-        detectionTime: currentUser.detectionTime,
-        emergencyContacts: currentUser.emergencyContacts,
-      );
-
-      // Mesclar dados atuais com dados parciais
-      final mergedData = _mergeUserData(currentUserData, partialData);
-
-      // Fazer PUT com dados completos
-      final response = await _apiClient.authenticatedPut(
-        'users/$uid',
-        mergedData.toJson(),
-        token,
-      );
-
-      if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
-        return UserPersonalDataResponse.fromJson(json);
-      } else {
-        debugPrint(
-          '❌ Update user partial failed: ${response.statusCode} ${response.body}',
-        );
-        return null;
-      }
-    } catch (e) {
-      debugPrint('❌ Update user partial error: $e');
-      return null;
-    }
-  }
-
-  // ✅ NOVO: Métodos específicos para atualizações parciais
-  Future<UserPersonalDataResponse?> updateUserPassword(
-    String uid,
-    String newPassword,
-  ) async {
-    return await updateUserPartial(uid, {'password': newPassword});
-  }
-
-  Future<UserPersonalDataResponse?> updateUserProfile(
-    String uid,
-    String username,
-    String email,
-  ) async {
-    return await updateUserPartial(uid, {'username': username, 'email': email});
-  }
-
-  Future<UserPersonalDataResponse?> updateUserDetectionTime(
-    String uid,
-    String detectionTime,
-  ) async {
-    return await updateUserPartial(uid, {'detection_time': detectionTime});
-  }
-
-  Future<UserPersonalDataResponse?> updateUserEmergencyContacts(
-    String uid,
-    List<EmergencyContactDTO> emergencyContacts,
-  ) async {
-    return await updateUserPartial(uid, {
-      'emergency_contact': emergencyContacts.map((e) => e.toJson()).toList(),
-    });
-  }
-
-  // ✅ NOVO: Método para mesclar dados do usuário
-  UserPersonalData _mergeUserData(
-    UserPersonalData currentData,
-    Map<String, dynamic> partialData,
-  ) {
-    return UserPersonalData(
-      username: partialData['username'] ?? currentData.username,
-      email: partialData['email'] ?? currentData.email,
-      password: partialData['password'] ?? currentData.password,
-      detectionTime: partialData['detection_time'] ?? currentData.detectionTime,
-      emergencyContacts:
-          partialData['emergency_contact'] != null
-              ? (partialData['emergency_contact'] as List)
-                  .map((e) => EmergencyContactDTO.fromJson(e))
-                  .toList()
-              : currentData.emergencyContacts,
-    );
-  }
-
-  // DELETE /users/{uid} → Remove usuário
   Future<bool> deleteUser(String uid) async {
     try {
+      debugPrint('🔄 [USER_SERVICE] Deletando usuário: $uid');
+
       final token = _authManager.token;
       if (token == null) {
-        debugPrint('❌ Nenhum token disponível para deleteUser');
+        debugPrint('❌ [USER_SERVICE] Token não disponível para deleteUser');
         return false;
       }
 
@@ -276,16 +296,16 @@ class UserService {
       );
 
       if (response.statusCode == 200) {
-        debugPrint('✅ User deleted successfully');
+        debugPrint('✅ [USER_SERVICE] User deleted successfully');
         return true;
       } else {
         debugPrint(
-          '❌ Delete user failed: ${response.statusCode} ${response.body}',
+          '❌ [USER_SERVICE] Delete user failed: ${response.statusCode}',
         );
         return false;
       }
     } catch (e) {
-      debugPrint('❌ Delete user error: $e');
+      debugPrint('❌ [USER_SERVICE] Delete user error: $e');
       return false;
     }
   }

@@ -31,7 +31,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _model.selectedDuration = Duration.zero;
 
     // Inicializar o controller do tempo com valor padrão
-    _model.cityTextController!.text = "00:30:00"; // Valor padrão de 30 minutos
+    _model.cityTextController!.text = "00:00:00"; // Valor padrão de 30 minutos
   }
 
   @override
@@ -56,11 +56,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _handleNext() async {
     if (_model.yourNameTextController?.text.isEmpty ?? true) {
+      debugPrint('❌ [PROFILE_PAGE] Nome não informado');
       _showSnackBar('Por favor, informe seu nome');
       return;
     }
 
     if (_model.selectedDuration == Duration.zero) {
+      debugPrint('❌ [PROFILE_PAGE] Tempo de detecção não selecionado');
       _showSnackBar('Por favor, selecione o tempo de detecção');
       return;
     }
@@ -70,25 +72,30 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final detectionTime = _formatDuration(_model.selectedDuration);
 
-      debugPrint('🚀 Navegando para ContactPage com dados:');
-      debugPrint('   Nome: ${_model.yourNameTextController!.text}');
-      debugPrint('   Email: $_email');
-      debugPrint('   Tempo de detecção: $detectionTime');
+      debugPrint('🚀 [PROFILE_PAGE] Navegando para ContactPage com dados:');
+      debugPrint('   👤 Nome: ${_model.yourNameTextController!.text}');
+      debugPrint('   📧 Email: $_email');
+      debugPrint('   ⏰ Tempo de detecção: $detectionTime');
+      debugPrint('   🔐 Senha: [PROTEGIDA]');
 
       // Simular um pequeno delay para mostrar o loading
       await Future.delayed(const Duration(milliseconds: 500));
 
-      Navigator.pushNamed(
-        context,
-        ContactPage.routePath,
-        arguments: {
-          'email': _email,
-          'password': _password,
-          'username': _model.yourNameTextController!.text,
-          'detectionTime': detectionTime,
-        },
-      );
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          ContactPage.routePath,
+          arguments: {
+            'email': _email,
+            'password': _password,
+            'username': _model.yourNameTextController!.text,
+            'detectionTime': detectionTime,
+          },
+        );
+        debugPrint('✅ [PROFILE_PAGE] Navegação para ContactPage iniciada');
+      }
     } catch (e) {
+      debugPrint('❌ [PROFILE_PAGE] Erro na navegação: $e');
       _showSnackBar('Erro: ${e.toString()}');
     } finally {
       if (mounted) {
@@ -98,10 +105,18 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String _formatDuration(Duration duration) {
-    final hours = duration.inHours.toString().padLeft(2, '0');
-    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
-    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
-    return '$hours:$minutes:$seconds';
+    try {
+      final hours = duration.inHours.toString().padLeft(2, '0');
+      final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+      final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+      final formatted = '$hours:$minutes:$seconds';
+
+      debugPrint('⏰ [PROFILE_PAGE] Duração formatada: $duration → $formatted');
+      return formatted;
+    } catch (e) {
+      debugPrint('❌ [PROFILE_PAGE] Erro ao formatar duração: $e');
+      return '00:00:00'; // Fallback
+    }
   }
 
   void _showSnackBar(String message) {

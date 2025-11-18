@@ -16,7 +16,6 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- ✅ Move service inside application -->
         <service
             android:name="com.redevrx.flutter_phone_call_state.receiver.CallMonitoringService"
             android:exported="false"
@@ -31,6 +30,19 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+
+            <!-- Intent filters para permitir que o app discar números -->
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <data android:scheme="tel" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.CALL" />
+                <data android:scheme="tel" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
 
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
@@ -51,6 +63,11 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Query para aplicativos de telefone -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
         </intent>
     </queries>
 </manifest>

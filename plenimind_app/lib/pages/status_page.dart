@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/components/status/app_drawer.dart';
+import 'package:plenimind_app/pages/settings.dart';
 import 'dart:async';
 import 'package:plenimind_app/schemas/request/vital_data.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
@@ -54,13 +55,30 @@ class _StatusPageState extends State<StatusPage> {
 
   Duration _parseDetectionTime(String detectionTime) {
     try {
+      debugPrint('⏰ [STATUS_PAGE] Parseando tempo de detecção: $detectionTime');
       final parts = detectionTime.split(':');
+
+      if (parts.length != 3) {
+        debugPrint('❌ [STATUS_PAGE] Formato de tempo inválido: $detectionTime');
+        return const Duration(seconds: 30);
+      }
+
       final hours = int.parse(parts[0]);
       final minutes = int.parse(parts[1]);
       final seconds = int.parse(parts[2]);
-      return Duration(hours: hours, minutes: minutes, seconds: seconds);
+
+      final duration = Duration(
+        hours: hours,
+        minutes: minutes,
+        seconds: seconds,
+      );
+      debugPrint('✅ [STATUS_PAGE] Tempo parseado: $duration');
+
+      return duration;
     } catch (e) {
-      debugPrint('❌ Erro ao parse detection_time: $e - usando fallback de 30s');
+      debugPrint(
+        '❌ [STATUS_PAGE] Erro ao parse detection_time: $e - usando fallback de 30s',
+      );
       return const Duration(seconds: 30);
     }
   }
@@ -72,11 +90,22 @@ class _StatusPageState extends State<StatusPage> {
 
     if (_userData?.detectionTime != null) {
       pollingInterval = _parseDetectionTime(_userData!.detectionTime);
+      debugPrint(
+        '⏰ [STATUS_PAGE] Tempo de detecção carregado: ${_userData!.detectionTime}',
+      );
+      debugPrint(
+        '⏰ [STATUS_PAGE] Intervalo de polling calculado: $pollingInterval',
+      );
+    } else {
+      debugPrint('⚠️ [STATUS_PAGE] Usando intervalo padrão de 30 segundos');
     }
 
-    debugPrint('🔁 Iniciando polling com intervalo: $pollingInterval');
+    debugPrint(
+      '🔁 [STATUS_PAGE] Iniciando polling com intervalo: $pollingInterval',
+    );
 
     _pollingTimer = Timer.periodic(pollingInterval, (Timer t) {
+      debugPrint('🔄 [STATUS_PAGE] Executando polling - ${DateTime.now()}');
       _loadVitalDataAndProcess();
     });
   }
@@ -115,47 +144,67 @@ class _StatusPageState extends State<StatusPage> {
   // No método _loadVitalDataAndProcess, garantir que está passando o contexto corretamente:
   Future<void> _loadVitalDataAndProcess() async {
     try {
+      debugPrint('🔄 [STATUS_PAGE] Iniciando processamento de dados vitais...');
+
       await _authManager.reloadTokens();
       final token = _authManager.token;
       final userId = _authManager.userId;
 
       if (token == null || userId == null) {
+        debugPrint(
+          '❌ [STATUS_PAGE] Usuário não autenticado - token: $token, userId: $userId',
+        );
         throw Exception('Usuário não autenticado');
       }
 
-      // ✅ CORREÇÃO: SEMPRE gerar novos dados simulados
+      debugPrint('✅ [STATUS_PAGE] Usuário autenticado: $userId');
+
+      // ✅ GERAR NOVOS DADOS SIMULADOS
       final currentVitalData =
           FakeDataGenerator.generateFakeVitalDataWithPanicChance();
 
-      // ✅ CORREÇÃO: Atualizar interface IMEDIATAMENTE
+      debugPrint('📊 [STATUS_PAGE] Dados vitais gerados:');
+      debugPrint(
+        '   ❤️  Frequência Cardíaca: ${currentVitalData.heartRate.toStringAsFixed(1)}',
+      );
+      debugPrint(
+        '   🌬️  Respiração: ${currentVitalData.respirationRate.toStringAsFixed(1)}',
+      );
+      debugPrint(
+        '   🏃 Movimento: ${currentVitalData.accelStd.toStringAsFixed(2)}',
+      );
+      debugPrint('   💨 SPO2: ${currentVitalData.spo2.toStringAsFixed(1)}');
+      debugPrint(
+        '   😰 Estresse: ${currentVitalData.stressLevel.toStringAsFixed(1)}',
+      );
+
+      // ✅ ATUALIZAR INTERFACE IMEDIATAMENTE
       if (mounted) {
         setState(() {
           _vitalData = currentVitalData;
           _lastUpdateTime = DateTime.now();
         });
+        debugPrint('✅ [STATUS_PAGE] Interface atualizada');
       }
 
-      // ✅ CORREÇÃO: Enviar para o servidor em segundo plano
+      // ✅ ENVIAR PARA O SERVIDOR
       await _sendVitalDataToServer(currentVitalData);
 
-      // ✅ CORREÇÃO: Processar notificações passando o contexto
-      // Garantir que o contexto está disponível
+      // ✅ PROCESSAR NOTIFICAÇÕES
       if (mounted) {
+        debugPrint('🧠 [STATUS_PAGE] Enviando dados para análise da IA...');
         await _notificationService.processVitalDataAndNotify(
           userId,
           currentVitalData,
           token,
-          context, // ✅ Contexto passado para mostrar alertas
+          context,
         );
+        debugPrint('✅ [STATUS_PAGE] Processamento de notificações concluído');
       }
 
-      debugPrint(
-        '🔄 Dados vitais NOVOS gerados: '
-        'HR: ${_vitalData.heartRate.toStringAsFixed(1)}, '
-        'RR: ${_vitalData.respirationRate.toStringAsFixed(1)}',
-      );
+      debugPrint('✅ [STATUS_PAGE] Ciclo de polling concluído com sucesso');
     } catch (e) {
-      debugPrint('❌ Erro no polling de dados vitais: $e');
+      debugPrint('❌ [STATUS_PAGE] Erro no polling de dados vitais: $e');
     }
   }
 
@@ -225,6 +274,58 @@ class _StatusPageState extends State<StatusPage> {
       const SnackBar(
         content: Text('Dados atualizados!'),
         duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
+  Widget _buildContactsWarning() {
+    final contactCount = _userData?.emergencyContacts.length ?? 0;
+
+    if (contactCount > 0) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.04),
+      decoration: BoxDecoration(
+        color: Colors.orange[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange[200]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning, color: Colors.orange[600], size: 24),
+          SizedBox(width: MediaQuery.of(context).size.width * 0.03),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Contatos de Emergência Não Configurados',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange[700],
+                    fontSize: MediaQuery.of(context).size.width * 0.035,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Configure contatos de emergência para receber ajuda em caso de crise.',
+                  style: TextStyle(
+                    color: Colors.orange[600],
+                    fontSize: MediaQuery.of(context).size.width * 0.03,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.settings, color: Colors.orange[600]),
+            onPressed: () {
+              Navigator.pushNamed(context, SettingsPage.routePath);
+            },
+          ),
+        ],
       ),
     );
   }
@@ -361,6 +462,7 @@ class _StatusPageState extends State<StatusPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildContactsWarning(),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

@@ -16,42 +16,61 @@ class CallService {
   bool _isCalling = false;
   Completer<void>? _currentCallCompleter;
 
-  /// Solicita permissões e inicia o monitor de chamadas
-  Future<void> requestPermission() async {
+  Future<bool> hasPhonePermission() async {
     try {
-      final results =
-          await [Permission.notification, Permission.phone].request();
-
-      final notificationGranted =
-          results[Permission.notification]?.isGranted ?? false;
-      final phoneGranted = results[Permission.phone]?.isGranted ?? false;
-
-      // ✅ CORREÇÃO: Salvar permissões concedidas
-      if (notificationGranted) {
-        await PermissionManager.setNotificationPermissionGranted(true);
-      }
-      if (phoneGranted) {
-        await PermissionManager.setPhonePermissionGranted(true);
-      }
-
-      if (notificationGranted && phoneGranted && Platform.isAndroid) {
-        // ✅ CORREÇÃO: Não usar await se retorna void, apenas chamar o método
-        PhoneCallState.instance.startMonitorService();
-        debugPrint("✅ Monitor de chamadas iniciado");
-        return;
-      } else {
-        throw Exception("Permissões de telefone/notificação negadas");
-      }
+      final termsPermission =
+          await PermissionManager.getPhonePermissionGranted();
+      final systemPermission = await Permission.phone.status;
+      return termsPermission && systemPermission.isGranted;
     } catch (e) {
-      debugPrint("❌ Erro ao solicitar permissões: $e");
-      throw Exception("Erro ao configurar serviço de chamadas: $e");
+      debugPrint('❌ [CALL_SERVICE] Erro ao verificar permissões: $e');
+      return false;
     }
   }
 
-  /// Inicia o fluxo de chamadas de emergência
+  Future<void> requestPermission() async {
+    try {
+      debugPrint('🔄 [CALL_SERVICE] Verificando permissões de telefone...');
+
+      final phonePermission =
+          await PermissionManager.getPhonePermissionGranted();
+      if (!phonePermission) {
+        throw Exception("Permissão de telefone não concedida nos termos");
+      }
+
+      var status = await Permission.phone.status;
+      if (!status.isGranted) {
+        debugPrint(
+          '📞 [CALL_SERVICE] Solicitando permissão de telefone do sistema...',
+        );
+        status = await Permission.phone.request();
+
+        if (!status.isGranted) {
+          throw Exception("Permissão de telefone negada pelo usuário");
+        }
+
+        await PermissionManager.setPhonePermissionGranted(true);
+      }
+
+      if (Platform.isAndroid) {
+        debugPrint(
+          '🤖 [CALL_SERVICE] Iniciando monitoramento de chamadas no Android',
+        );
+        PhoneCallState.instance.startMonitorService();
+      }
+
+      debugPrint(
+        '✅ [CALL_SERVICE] Permissões de telefone validadas com sucesso',
+      );
+    } catch (e) {
+      debugPrint('❌ [CALL_SERVICE] Erro nas permissões de telefone: $e');
+      throw Exception("Permissões de telefone insuficientes: $e");
+    }
+  }
+
   Future<void> startEmergencyCall(String userId) async {
     if (_isCalling) {
-      debugPrint("⚠️ Chamada de emergência já em andamento");
+      debugPrint('⚠️ [CALL_SERVICE] Chamada de emergência já em andamento');
       return;
     }
 
@@ -60,36 +79,47 @@ class CallService {
     _currentCallCompleter = Completer<void>();
 
     try {
-      debugPrint("🔄 Iniciando chamadas de emergência para usuário: $userId");
+      debugPrint(
+        '🚨 [CALL_SERVICE] INICIANDO CHAMADAS DE EMERGÊNCIA para usuário: $userId',
+      );
 
-      // Solicitar permissões se necessário
       await requestPermission();
 
       final List<EmergencyContact> contacts =
           await ContactService.getEmergencyContacts(userId);
+      debugPrint(
+        '📞 [CALL_SERVICE] ${contacts.length} contatos de emergência carregados',
+      );
 
       if (contacts.isEmpty) {
+        debugPrint('❌ [CALL_SERVICE] NENHUM CONTATO CONFIGURADO - ABORTANDO');
         throw Exception("Nenhum contato de emergência configurado");
       }
 
-      // Ordenar contatos por prioridade
       final sortedContacts = ContactService.sortByPriority(contacts);
-      debugPrint(
-        "📞 ${sortedContacts.length} contatos ordenados por prioridade",
-      );
+      debugPrint('📞 [CALL_SERVICE] Contatos ordenados por prioridade:');
+      for (var contact in sortedContacts) {
+        debugPrint(
+          '   ${contact.priority}. ${contact.name} - ${contact.phone}',
+        );
+      }
 
-      // Inicia o listener do estado da chamada
       _subscribeToPhoneState();
 
-      // Realizar chamadas em sequência até alguém atender
+      debugPrint(
+        '📞 [CALL_SERVICE] Iniciando sequência de chamadas para ${sortedContacts.length} contatos',
+      );
+
       for (final contact in sortedContacts) {
         if (_callAnswered) {
-          debugPrint('✅ Chamada atendida por ${contact.name}');
+          debugPrint(
+            '✅ [CALL_SERVICE] Chamada atendida por ${contact.name} - PARANDO SEQUÊNCIA',
+          );
           break;
         }
 
         debugPrint(
-          '📞 Ligando para ${contact.name} (${contact.phone}) - Prioridade: ${contact.priority}',
+          '📞 [CALL_SERVICE] Ligando para ${contact.name} (${contact.phone}) - Prioridade: ${contact.priority}',
         );
 
         final callSuccess = await _makeCall(contact.phone);
@@ -99,18 +129,23 @@ class CallService {
         }
 
         if (!_callAnswered) {
-          debugPrint('❌ ${contact.name} não atendeu, tentando próximo...');
+          debugPrint(
+            '❌ [CALL_SERVICE] ${contact.name} não atendeu, tentando próximo...',
+          );
         }
       }
 
       if (!_callAnswered) {
-        debugPrint('⚠️ Nenhum contato atendeu a chamada de emergência');
+        debugPrint(
+          '⚠️ [CALL_SERVICE] NENHUM CONTATO ATENDEU A CHAMADA DE EMERGÊNCIA',
+        );
+      } else {
+        debugPrint('✅ [CALL_SERVICE] Emergência atendida com sucesso');
       }
 
-      debugPrint('✅ Processo de chamadas de emergência finalizado');
       _currentCallCompleter?.complete();
     } catch (e) {
-      debugPrint('❌ Erro durante chamadas de emergência: $e');
+      debugPrint('❌ [CALL_SERVICE] Erro durante chamadas de emergência: $e');
       _currentCallCompleter?.completeError(e);
       throw Exception("Erro ao realizar chamadas de emergência: $e");
     } finally {
@@ -118,37 +153,43 @@ class CallService {
     }
   }
 
-  /// ✅ CORREÇÃO: Método _makeCall corrigido para tratar bool? corretamente
   Future<bool> _makeCall(String phoneNumber) async {
     try {
+      debugPrint('📞 [CALL_SERVICE] Discando para: $phoneNumber');
+
       final bool? result = await FlutterPhoneDirectCaller.callNumber(
         phoneNumber,
       );
 
-      // ✅ CORREÇÃO: Tratamento adequado do bool?
-      if (result == null) {
-        debugPrint("⚠️ Resultado da chamada é nulo para: $phoneNumber");
+      if (result == true) {
+        debugPrint(
+          '✅ [CALL_SERVICE] Chamada iniciada com sucesso para: $phoneNumber',
+        );
+        return true;
+      } else {
+        debugPrint(
+          '❌ [CALL_SERVICE] Falha ao iniciar chamada para: $phoneNumber',
+        );
         return false;
       }
-
-      if (!result) {
-        debugPrint("❌ Falha ao iniciar chamada para: $phoneNumber");
-        return false;
-      }
-
-      debugPrint("✅ Chamada iniciada com sucesso para: $phoneNumber");
-      return true;
     } catch (e) {
-      debugPrint("❌ Erro ao fazer chamada para $phoneNumber: $e");
+      debugPrint(
+        '❌ [CALL_SERVICE] Erro ao fazer chamada para $phoneNumber: $e',
+      );
       return false;
     }
   }
 
-  /// Escuta as mudanças no estado da chamada
   void _subscribeToPhoneState() {
+    debugPrint(
+      '📞 [CALL_SERVICE] Inscrito no monitoramento de estado de chamada',
+    );
+
     _subscription?.cancel();
     _subscription = _phoneCallStatePlugin.phoneStateChange.listen((event) {
-      debugPrint("📞 Estado da chamada: ${event.state.description}");
+      debugPrint(
+        "📞 [CALL_SERVICE] Estado da chamada: ${event.state.description}",
+      );
 
       switch (event.state) {
         case CallState.call:
@@ -157,13 +198,13 @@ class CallService {
         case CallState.hold:
           if (!_callAnswered) {
             _callAnswered = true;
-            debugPrint('✅ Chamada atendida!');
+            debugPrint('✅ [CALL_SERVICE] CHAMADA ATENDIDA!');
           }
           break;
         case CallState.end:
         case CallState.none:
           _isCalling = false;
-          debugPrint('📞 Chamada finalizada');
+          debugPrint('📞 [CALL_SERVICE] Chamada finalizada');
           break;
         default:
           break;
@@ -171,13 +212,14 @@ class CallService {
     });
   }
 
-  /// Espera até que a chamada termine
   Future<void> _waitForCallCompletion() async {
+    debugPrint('⏳ [CALL_SERVICE] Aguardando conclusão da chamada...');
     final completer = Completer<void>();
     late StreamSubscription tempSub;
 
     tempSub = _phoneCallStatePlugin.phoneStateChange.listen((event) {
       if (event.state == CallState.end || event.state == CallState.none) {
+        debugPrint('📞 [CALL_SERVICE] Chamada finalizada no monitoramento');
         tempSub.cancel();
         if (!completer.isCompleted) {
           completer.complete();
@@ -185,40 +227,37 @@ class CallService {
       }
     });
 
-    // Timeout de 45 segundos para chamada não atendida
     try {
       await completer.future.timeout(const Duration(seconds: 45));
+      debugPrint('✅ [CALL_SERVICE] Chamada concluída dentro do timeout');
     } on TimeoutException {
-      debugPrint("⏰ Timeout - chamada não atendida após 45 segundos");
+      debugPrint(
+        "⏰ [CALL_SERVICE] TIMEOUT - chamada não atendida após 45 segundos",
+      );
       tempSub.cancel();
-      // Não completamos o completer aqui porque estamos tratando timeout
     }
   }
 
-  /// Para as chamadas de emergência
   Future<void> stopEmergencyCalls() async {
-    debugPrint("🛑 Parando chamadas de emergência");
+    debugPrint('🛑 [CALL_SERVICE] Parando chamadas de emergência');
     _callAnswered = true;
     _cleanup();
     _currentCallCompleter?.complete();
   }
 
-  /// Verifica se está realizando chamadas
   bool get isCalling => _isCalling;
-
-  /// Verifica se alguma chamada foi atendida
   bool get callAnswered => _callAnswered;
 
-  /// Limpa os recursos
   void _cleanup() {
+    debugPrint('🧹 [CALL_SERVICE] Limpando recursos de chamada');
     _subscription?.cancel();
     _subscription = null;
     _isCalling = false;
     _callAnswered = false;
   }
 
-  /// Dispose para liberar recursos
   void dispose() {
+    debugPrint('♻️ [CALL_SERVICE] Dispose chamado');
     _cleanup();
     _currentCallCompleter?.complete();
   }

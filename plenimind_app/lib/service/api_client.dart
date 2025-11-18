@@ -33,26 +33,18 @@ class ApiClient {
     final url = Uri.parse('$baseUrl/$endpoint');
     final headers = {'Content-Type': 'application/json'};
 
-    // Envia a requisição inicial
     final response = await _handleRequest(
       client.post(url, headers: headers, body: jsonEncode(body)),
     );
 
-    // Se o servidor retornar 307/308 (redirect que preserva o método),
-    // segue o redirect manualmente preservando o método POST e o corpo.
     if ((response.statusCode == 307 || response.statusCode == 308) &&
         response.headers.containsKey('location')) {
       final location = response.headers['location']!;
-      // Resolve URL relativa contra a base
       final base = Uri.parse(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
       final redirectedUri =
           location.startsWith('http')
               ? Uri.parse(location)
               : base.resolve(location);
-
-      print(
-        'ApiClient: received ${response.statusCode} redirect to $redirectedUri',
-      );
 
       final redirectedResponse = await client.post(
         redirectedUri,
@@ -97,7 +89,6 @@ class ApiClient {
       client.post(url, headers: headers, body: jsonEncode(body)),
     );
 
-    // Handle 307/308 redirect preserving POST
     if ((response.statusCode == 307 || response.statusCode == 308) &&
         response.headers.containsKey('location')) {
       final location = response.headers['location']!;
@@ -106,10 +97,6 @@ class ApiClient {
           location.startsWith('http')
               ? Uri.parse(location)
               : base.resolve(location);
-
-      debugPrint(
-        'ApiClient.authenticatedPost: redirect ${response.statusCode} -> $redirectedUri',
-      );
 
       final redirectedResponse = await client.post(
         redirectedUri,
@@ -146,7 +133,6 @@ class ApiClient {
       client.put(url, headers: headers, body: jsonEncode(body)),
     );
 
-    // Handle 307/308 redirect preserving PUT
     if ((response.statusCode == 307 || response.statusCode == 308) &&
         response.headers.containsKey('location')) {
       final location = response.headers['location']!;
@@ -155,10 +141,6 @@ class ApiClient {
           location.startsWith('http')
               ? Uri.parse(location)
               : base.resolve(location);
-
-      debugPrint(
-        'ApiClient.authenticatedPut: redirect ${response.statusCode} -> $redirectedUri',
-      );
 
       final redirectedResponse = await client.put(
         redirectedUri,

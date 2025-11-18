@@ -3,9 +3,9 @@ import 'package:plenimind_app/components/status/notifications/emergency_contact_
 import 'package:plenimind_app/core/auth/auth_manager.dart';
 import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/service/account_service.dart';
+import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/service/user_service.dart';
 import 'package:plenimind_app/components/utils/loading_overlay.dart';
-import 'package:plenimind_app/schemas/request/personal_data.dart';
 import 'package:plenimind_app/schemas/response/user_personal_request.dart';
 import 'package:plenimind_app/schemas/dto/emergency_contact_dto.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
@@ -24,11 +24,11 @@ class _SettingsPageState extends State<SettingsPage> {
   final UserService _userService = UserService();
 
   bool _isLoading = false;
-  bool _isSaving = false;
+  bool _isSavingProfile = false;
+  bool _isSavingDetectionTime = false;
   String _userEmail = '';
   UserPersonalDataResponse? _userData;
 
-  // Controladores para edição
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _detectionTimeController =
       TextEditingController();
@@ -44,6 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _isLoading = true);
 
     try {
+      debugPrint('🔄 [SETTINGS] Carregando dados do usuário...');
       await _authManager.reloadTokens();
       final token = _authManager.token;
 
@@ -57,17 +58,160 @@ class _SettingsPageState extends State<SettingsPage> {
             _detectionTimeController.text = userResponse.detectionTime;
             _emailController.text = userResponse.email;
           });
-          debugPrint('✅ Dados do usuário carregados: ${userResponse.username}');
+          debugPrint('✅ [SETTINGS] Dados carregados com sucesso');
+        } else {
+          debugPrint('❌ [SETTINGS] Falha ao carregar dados do usuário');
         }
+      } else {
+        debugPrint('❌ [SETTINGS] Token não disponível para carregar dados');
       }
     } catch (e) {
-      debugPrint('❌ Erro ao carregar dados do usuário: $e');
+      debugPrint('❌ [SETTINGS] Erro ao carregar dados do usuário: $e');
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-  // ✅ NOVO MÉTODO: Converter EmergencyContactDTO para EmergencyContact
+  // ✅ NOVO: Salvar apenas perfil (username e email)
+  Future<void> _saveProfile() async {
+    if (_userData == null) return;
+
+    setState(() => _isSavingProfile = true);
+
+    try {
+      debugPrint('🔄 [SETTINGS] Salvando perfil...');
+      final userId = _authManager.userId;
+      if (userId == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      final result = await _userService.updateUserProfile(
+        uid: userId,
+        username: _usernameController.text,
+        email: _emailController.text,
+      );
+
+      if (result != null) {
+        setState(() {
+          _userData = result;
+          _userEmail = result.email;
+        });
+        debugPrint('✅ [SETTINGS] Perfil salvo com sucesso');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Perfil atualizado com sucesso!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        throw Exception('Falha ao atualizar perfil');
+      }
+    } catch (e) {
+      debugPrint('❌ [SETTINGS] Erro ao salvar perfil: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erro ao salvar perfil: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      setState(() => _isSavingProfile = false);
+    }
+  }
+
+  // ✅ NOVO: Salvar apenas tempo de detecção
+  Future<void> _saveDetectionTime() async {
+    if (_userData == null) return;
+
+    setState(() => _isSavingDetectionTime = true);
+
+    try {
+      debugPrint('🔄 [SETTINGS] Salvando tempo de detecção...');
+      final userId = _authManager.userId;
+      if (userId == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      final result = await _userService.updateUserDetectionTime(
+        uid: userId,
+        detectionTime: _detectionTimeController.text,
+      );
+
+      if (result != null) {
+        setState(() {
+          _userData = result;
+        });
+        debugPrint('✅ [SETTINGS] Tempo de detecção salvo com sucesso');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Tempo de detecção atualizado!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        throw Exception('Falha ao atualizar tempo de detecção');
+      }
+    } catch (e) {
+      debugPrint('❌ [SETTINGS] Erro ao salvar tempo de detecção: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erro ao salvar tempo: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      setState(() => _isSavingDetectionTime = false);
+    }
+  }
+
+  // ✅ NOVO: Salvar contatos de emergência
+  Future<void> _saveEmergencyContacts(List<EmergencyContact> contacts) async {
+    try {
+      debugPrint(
+        '🔄 [SETTINGS] Salvando ${contacts.length} contatos de emergência...',
+      );
+
+      final userId = _authManager.userId;
+      if (userId == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      // Salvar localmente
+      await ContactService.saveEmergencyContacts(contacts, userId);
+
+      // Converter para DTO e salvar no servidor
+      final emergencyContactsDTO = _convertEmergencyContactsToDTOs(contacts);
+
+      final result = await _userService.updateUserEmergencyContacts(
+        uid: userId,
+        emergencyContacts: emergencyContactsDTO,
+      );
+
+      if (result != null) {
+        setState(() {
+          _userData = result;
+        });
+        debugPrint('✅ [SETTINGS] Contatos salvos com sucesso');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Contatos de emergência atualizados!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        throw Exception('Falha ao atualizar contatos no servidor');
+      }
+    } catch (e) {
+      debugPrint('❌ [SETTINGS] Erro ao salvar contatos: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erro ao salvar contatos: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   List<EmergencyContact> _convertDTOsToEmergencyContacts(
     List<EmergencyContactDTO> dtos,
   ) {
@@ -79,13 +223,12 @@ class _SettingsPageState extends State<SettingsPage> {
         id: '${userId}_contact_$index',
         name: dto.name,
         phone: dto.phone,
-        imageUrl: '', // Definir imagem padrão ou deixar vazio
-        priority: index + 1, // Prioridade baseada na ordem (1-based)
+        imageUrl: '',
+        priority: index + 1,
       );
     }).toList();
   }
 
-  // ✅ NOVO MÉTODO: Converter EmergencyContact para EmergencyContactDTO
   List<EmergencyContactDTO> _convertEmergencyContactsToDTOs(
     List<EmergencyContact> contacts,
   ) {
@@ -97,69 +240,31 @@ class _SettingsPageState extends State<SettingsPage> {
         .toList();
   }
 
-  Future<void> _saveUserData() async {
-    if (_userData == null) return;
+  // ✅ NOVO: Método para verificar status dos contatos
+  Widget _buildContactsStatus() {
+    final contactCount = _userData?.emergencyContacts.length ?? 0;
 
-    setState(() => _isSaving = true);
-
-    try {
-      // Converter contatos de emergência de volta para DTO
-      final emergencyContactsDTO =
-          _userData!.emergencyContacts
-              .map(
-                (contact) => EmergencyContactDTO(
-                  name: contact.name,
-                  phone: contact.phone,
-                ),
-              )
-              .toList();
-
-      final updatedUser = UserPersonalData(
-        username: _usernameController.text,
-        email: _emailController.text,
-        password: '', // Não alterar senha na edição
-        detectionTime: _detectionTimeController.text,
-        emergencyContacts: emergencyContactsDTO,
-      );
-
-      final token = _authManager.token;
-      final userId = _authManager.userId;
-
-      if (token == null || userId == null) {
-        throw Exception('Usuário não autenticado');
-      }
-
-      final result = await _userService.updateUser(userId, updatedUser);
-
-      if (result != null) {
-        // Atualizar dados locais
-        setState(() {
-          _userData = result;
-          _userEmail = result.email;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Dados atualizados com sucesso!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-
-        debugPrint('✅ Dados do usuário atualizados: ${result.username}');
-      } else {
-        throw Exception('Falha ao atualizar dados');
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao salvar dados: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Erro ao salvar: $e'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    } finally {
-      setState(() => _isSaving = false);
-    }
+    return ListTile(
+      leading: Icon(
+        contactCount > 0 ? Icons.check_circle : Icons.warning,
+        color: contactCount > 0 ? Colors.green : Colors.orange,
+      ),
+      title: Text('Contatos de Emergência'),
+      subtitle: Text(
+        contactCount > 0
+            ? '$contactCount contatos configurados'
+            : 'Nenhum contato configurado',
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (contactCount == 0)
+            Icon(Icons.warning, color: Colors.orange, size: 16),
+          const Icon(Icons.arrow_forward_ios, size: 16),
+        ],
+      ),
+      onTap: _showEmergencyContactsManager,
+    );
   }
 
   Future<void> _handleDeleteAccount() async {
@@ -170,9 +275,7 @@ class _SettingsPageState extends State<SettingsPage> {
         return AlertDialog(
           title: const Text('Deletar Conta'),
           content: const Text(
-            'Esta ação é IRREVERSÍVEL. Todos os seus dados serão deletados permanentemente.\n\n'
-            'Suas permissões (contatos, notificações) serão mantidas para facilitar '
-            'o recadastramento, mas seus dados pessoais serão perdidos.',
+            'Esta ação é IRREVERSÍVEL. Todos os seus dados serão deletados permanentemente.',
           ),
           actions: [
             TextButton(
@@ -207,9 +310,7 @@ class _SettingsPageState extends State<SettingsPage> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text(
-                  '✅ Conta deletada com sucesso. Suas permissões foram mantidas para recadastramento.',
-                ),
+                content: Text('✅ Conta deletada com sucesso.'),
                 duration: Duration(seconds: 3),
               ),
             );
@@ -227,7 +328,7 @@ class _SettingsPageState extends State<SettingsPage> {
           }
         }
       } catch (e) {
-        debugPrint('❌ Erro ao deletar conta: $e');
+        debugPrint('❌ [SETTINGS] Erro ao deletar conta: $e');
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -242,11 +343,28 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showEmergencyContactsManager() {
-    // ✅ CORREÇÃO: Converter EmergencyContactDTO para EmergencyContact
+    final userId = _authManager.userId;
+    if (userId == null) {
+      debugPrint(
+        '❌ [SETTINGS] Usuário não autenticado para gerenciar contatos',
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Usuário não autenticado'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final initialContacts =
         _userData != null
             ? _convertDTOsToEmergencyContacts(_userData!.emergencyContacts)
             : <EmergencyContact>[];
+
+    debugPrint(
+      '🔄 [SETTINGS] Abrindo gerenciador de contatos com ${initialContacts.length} contatos',
+    );
 
     showModalBottomSheet(
       context: context,
@@ -263,47 +381,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        debugPrint(
+                          '❌ [SETTINGS] Gerenciador de contatos fechado',
+                        );
+                        Navigator.pop(context);
+                      },
                     ),
                   ],
                 ),
                 Expanded(
                   child: EmergencyContactManager(
-                    initialContacts:
-                        initialContacts, // ✅ Agora é List<EmergencyContact>
-                    onContactsUpdated: (
-                      List<EmergencyContact> updatedContacts,
-                    ) async {
-                      // ✅ CORREÇÃO: Converter EmergencyContact para EmergencyContactDTO
-                      final emergencyContactsDTO =
-                          _convertEmergencyContactsToDTOs(updatedContacts);
-
-                      final token = _authManager.token;
-                      final userId = _authManager.userId;
-
-                      if (token != null && userId != null) {
-                        final result = await _userService
-                            .updateUserEmergencyContacts(
-                              userId,
-                              emergencyContactsDTO,
-                            );
-
-                        if (result != null) {
-                          // Recarregar dados do usuário
-                          await _loadUserData();
-                          Navigator.pop(context); // Fechar o modal após sucesso
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('❌ Erro ao atualizar contatos'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      }
-                    },
+                    initialContacts: initialContacts,
+                    onContactsUpdated: _saveEmergencyContacts,
                     screenWidth: MediaQuery.of(context).size.width,
-                    userId: _authManager.userId ?? '',
+                    userId: userId,
                   ),
                 ),
               ],
@@ -342,11 +434,48 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               keyboardType: TextInputType.emailAddress,
             ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSavingProfile ? null : _saveProfile,
+                child:
+                    _isSavingProfile
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Text('Salvar Perfil'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetectionTimeSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Tempo de Detecção',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Intervalo entre verificações de sinais vitais (HH:MM:SS)',
+              style: TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _detectionTimeController,
               decoration: const InputDecoration(
-                labelText: 'Tempo de Detecção (HH:MM:SS)',
+                labelText: 'Tempo de Detecção',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.timer),
                 hintText: 'Ex: 00:30:00',
@@ -356,15 +485,19 @@ class _SettingsPageState extends State<SettingsPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSaving ? null : _saveUserData,
+                onPressed: _isSavingDetectionTime ? null : _saveDetectionTime,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue[50],
+                  foregroundColor: Colors.blue[700],
+                ),
                 child:
-                    _isSaving
+                    _isSavingDetectionTime
                         ? const SizedBox(
                           height: 20,
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                        : const Text('Salvar Alterações'),
+                        : const Text('Salvar Intervalo'),
               ),
             ),
           ],
@@ -390,15 +523,7 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('ID do Usuário'),
               subtitle: Text(_authManager.userId ?? 'Não disponível'),
             ),
-            ListTile(
-              leading: const Icon(Icons.emergency),
-              title: const Text('Contatos de Emergência'),
-              subtitle: Text(
-                '${_userData?.emergencyContacts.length ?? 0} contatos configurados',
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: _showEmergencyContactsManager,
-            ),
+            _buildContactsStatus(), // ✅ USAR O NOVO MÉTODO
             if (_userData?.detectionTime != null)
               ListTile(
                 leading: const Icon(Icons.schedule),
@@ -478,6 +603,8 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Column(
             children: [
               _buildUserInfoSection(),
+              const SizedBox(height: 16),
+              _buildDetectionTimeSection(),
               const SizedBox(height: 16),
               _buildAccountInfoSection(),
               const SizedBox(height: 16),
