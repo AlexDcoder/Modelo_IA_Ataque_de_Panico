@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart'; // ✅ Adicionar esta importação
+import 'package:flutter/material.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 
 class SettingsContactItem extends StatelessWidget {
   final EmergencyContact contact;
   final Function(String) onRemove;
   final Function(String, int) onPriorityChange;
+  final Function(String) onDuplicate; // NOVO CALLBACK
   final int maxPriority;
   final double screenWidth;
 
@@ -13,6 +14,7 @@ class SettingsContactItem extends StatelessWidget {
     required this.contact,
     required this.onRemove,
     required this.onPriorityChange,
+    required this.onDuplicate, // NOVO PARÂMETRO
     required this.maxPriority,
     required this.screenWidth,
   });
@@ -26,9 +28,7 @@ class SettingsContactItem extends StatelessWidget {
           backgroundColor: Theme.of(context).colorScheme.primary,
           child: Text(
             contact.name.isNotEmpty ? contact.name[0].toUpperCase() : '?',
-            style: const TextStyle(
-              color: Colors.white,
-            ), // ✅ Agora Colors está disponível
+            style: const TextStyle(color: Colors.white),
           ),
         ),
         title: Text(
@@ -52,7 +52,7 @@ class SettingsContactItem extends StatelessWidget {
                   'Prioridade: ',
                   style: TextStyle(
                     fontSize: screenWidth * 0.035,
-                    color: Colors.grey[600], // ✅ Agora Colors está disponível
+                    color: Colors.grey[600],
                   ),
                 ),
                 Container(
@@ -89,6 +89,9 @@ class SettingsContactItem extends StatelessWidget {
             } else if (value == 'decrease_priority' &&
                 contact.priority < maxPriority) {
               onPriorityChange(contact.id, contact.priority + 1);
+            } else if (value == 'duplicate') {
+              // NOVA OPÇÃO
+              onDuplicate(contact.id);
             }
           },
           itemBuilder:
@@ -109,17 +112,19 @@ class SettingsContactItem extends StatelessWidget {
                       title: Text('Diminuir Prioridade'),
                     ),
                   ),
+                // NOVA OPÇÃO DE DUPLICAR
+                PopupMenuItem(
+                  value: 'duplicate',
+                  child: ListTile(
+                    leading: Icon(Icons.copy),
+                    title: Text('Duplicar Contato'),
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'remove',
                   child: ListTile(
-                    leading: Icon(
-                      Icons.delete,
-                      color: Colors.red,
-                    ), // ✅ Agora Colors está disponível
-                    title: Text(
-                      'Remover',
-                      style: TextStyle(color: Colors.red),
-                    ), // ✅ Agora Colors está disponível
+                    leading: Icon(Icons.delete, color: Colors.red),
+                    title: Text('Remover', style: TextStyle(color: Colors.red)),
                   ),
                 ),
               ],

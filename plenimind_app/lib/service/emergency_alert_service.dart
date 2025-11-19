@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/components/status/notifications/emergency_alert_dialog.dart';
+import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:plenimind_app/schemas/request/vital_data.dart';
 import 'package:plenimind_app/service/feedback_service.dart';
 import 'package:plenimind_app/service/call_service.dart';
@@ -55,7 +56,6 @@ class EmergencyAlertService {
     );
   }
 
-  // ATUALIZAR método _handleEmergencyConfirmed
   Future<void> _handleEmergencyConfirmed(
     String uid,
     UserVitalData vitalData,
@@ -67,7 +67,7 @@ class EmergencyAlertService {
         '🔄 [EMERGENCY_ALERT_SERVICE] Processando confirmação de emergência...',
       );
 
-      // Verificar permissões de telefone antes de prosseguir
+      // ✅ VERIFICAÇÃO EXPANDIDA DE PERMISSÕES
       final hasPermission = await _callService.hasPhonePermission();
       if (!hasPermission) {
         debugPrint(
@@ -92,9 +92,67 @@ class EmergencyAlertService {
         return;
       }
 
+      // ✅ VALIDAR E FORMATAR TODOS OS NÚMEROS ANTES DE INICIAR
       debugPrint(
-        '📞 [EMERGENCY_ALERT_SERVICE] Iniciando chamadas de emergência...',
+        '🔄 [EMERGENCY_ALERT_SERVICE] Validando números de contatos...',
       );
+      final List<EmergencyContact> validContacts = [];
+
+      for (final contact in contacts) {
+        try {
+          final formattedPhone = ContactService.validateAndFormatPhoneNumber(
+            contact.phone,
+          );
+          final validContact = EmergencyContact(
+            id: contact.id,
+            name: contact.name,
+            phone: formattedPhone,
+            imageUrl: contact.imageUrl,
+            priority: contact.priority,
+          );
+          validContacts.add(validContact);
+          debugPrint('   ✅ ${contact.name}: $formattedPhone');
+        } catch (e) {
+          debugPrint('   ❌ ${contact.name}: Número inválido - ${e.toString()}');
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Número inválido para ${contact.name}: ${contact.phone}',
+                ),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+          // Não retornar imediatamente, apenas pular este contato
+          continue;
+        }
+      }
+
+      if (validContacts.isEmpty) {
+        debugPrint('❌ [EMERGENCY_ALERT_SERVICE] NENHUM CONTATO VÁLIDO!');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ Nenhum contato com número válido encontrado'),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+
+      // ✅ SALVAR CONTATOS VALIDADOS LOCALMENTE
+      await ContactService.saveEmergencyContacts(validContacts, uid);
+      debugPrint(
+        '✅ [EMERGENCY_ALERT_SERVICE] Contatos válidos salvos: ${validContacts.length}',
+      );
+
+      debugPrint(
+        '📞 [EMERGENCY_ALERT_SERVICE] Iniciando chamadas de emergência para ${validContacts.length} contatos válidos...',
+      );
+
+      // ✅ INICIAR CHAMADAS APENAS COM CONTATOS VÁLIDOS
       await _callService.startEmergencyCall(uid);
 
       debugPrint(

@@ -249,6 +249,33 @@ class ContactService {
     }
   }
 
+  static List<EmergencyContact> sortByName(List<EmergencyContact> contacts) {
+    debugPrint(
+      '🔄 [CONTACT_SERVICE] Ordenando ${contacts.length} contatos por nome',
+    );
+    List<EmergencyContact> sorted = List<EmergencyContact>.from(contacts);
+    sorted.sort((a, b) => a.name.compareTo(b.name));
+    debugPrint('✅ [CONTACT_SERVICE] Contatos ordenados por nome');
+    return sorted;
+  }
+
+  static List<EmergencyContact> sortByPriorityAndName(
+    List<EmergencyContact> contacts,
+  ) {
+    debugPrint(
+      '🔄 [CONTACT_SERVICE] Ordenando ${contacts.length} contatos por prioridade e nome',
+    );
+    List<EmergencyContact> sorted = List<EmergencyContact>.from(contacts);
+    sorted.sort((a, b) {
+      if (a.priority != b.priority) {
+        return a.priority.compareTo(b.priority);
+      }
+      return a.name.compareTo(b.name);
+    });
+    debugPrint('✅ [CONTACT_SERVICE] Contatos ordenados por prioridade e nome');
+    return sorted;
+  }
+
   static Future<bool> isEmergencyContact(String phone, String userId) async {
     debugPrint(
       '🔍 [CONTACT_SERVICE] Verificando se $phone é contato de emergência',
@@ -355,17 +382,209 @@ class ContactService {
     return isValid;
   }
 
-  static String _formatPhoneNumber(String phone) {
-    final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
-    String formatted;
+  // MÉTODO CORRIGIDO PARA VALIDAÇÃO COM FORMATO INTERNACIONAL CORRETO
+  static String validateAndFormatPhoneNumber(String phone) {
+    try {
+      debugPrint('📞 [CONTACT_SERVICE] Validando número: $phone');
 
-    if (!cleaned.startsWith('+')) {
-      formatted = '+55$cleaned';
-      debugPrint('   🔄 Número formatado: $phone → $formatted');
-    } else {
-      formatted = cleaned;
+      // Aplicar formatação completa (que inclui remoção de prefixos)
+      String formatted = _formatPhoneNumber(phone);
+
+      // Validações finais - DEVE TER O + NO INÍCIO
+      if (formatted.length < 13) {
+        // +55 (3) + DDD (2) + 8-9 dígitos
+        throw Exception('Número muito curto após formatação: $formatted');
+      }
+
+      if (!formatted.startsWith('+55')) {
+        throw Exception(
+          'Número não está em formato brasileiro internacional: $formatted',
+        );
+      }
+
+      debugPrint('✅ [CONTACT_SERVICE] Número validado e formatado: $formatted');
+      return formatted;
+    } catch (e) {
+      debugPrint('❌ [CONTACT_SERVICE] Erro na validação: $e');
+      throw Exception('Número de telefone inválido: $phone - ${e.toString()}');
+    }
+  }
+
+  // MÉTODO CORRIGIDO PARA GARANTIR FORMATO INTERNACIONAL +55
+  static String _formatPhoneNumber(String phone) {
+    try {
+      final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
+      String formatted;
+
+      if (cleaned.startsWith('+')) {
+        // Já está em formato internacional - ainda assim verificar prefixos
+        String withoutPlus = cleaned.substring(1);
+        String normalized = _removeUnwantedPrefixes(withoutPlus);
+
+        // Se não começa com 55, adicionar
+        if (!normalized.startsWith('55')) {
+          formatted = '+55$normalized';
+        } else {
+          formatted = '+$normalized';
+        }
+      } else {
+        // Número local - remover prefixos indesejados primeiro
+        String normalized = _removeUnwantedPrefixes(cleaned);
+
+        // Garantir que tenha o código do Brasil
+        if (normalized.startsWith('55')) {
+          // Já tem 55, apenas adicionar o +
+          formatted = '+$normalized';
+        } else {
+          // Adicionar código do Brasil
+          formatted = '+55$normalized';
+        }
+      }
+
+      debugPrint('🔄 [CONTACT_SERVICE] Formatação: $phone → $formatted');
+      return formatted;
+    } catch (e) {
+      debugPrint('❌ [CONTACT_SERVICE] Erro na formatação: $e');
+      rethrow;
+    }
+  }
+
+  // MÉTODO PARA REMOÇÃO DE PREFIXOS INDESEJADOS
+  static String _removeUnwantedPrefixes(String phone) {
+    String cleaned = phone;
+
+    debugPrint('   🧹 Limpando prefixos de: $cleaned');
+
+    // REMOVER ZEROS INICIAIS
+    if (cleaned.startsWith('0')) {
+      cleaned = cleaned.substring(1);
+      debugPrint('   🧹 Zero inicial removido: $cleaned');
     }
 
-    return formatted;
+    // LISTA EXPANDIDA DE PREFIXOS INDESEJADOS (OPERADORAS E CÓDIGOS ESPECIAIS)
+    final unwantedPrefixes = [
+      '041', '031', '021', '051', '061', '071', '081', '091', // Operadoras
+      '0300', '0500', '0800', '0900', // Serviços
+      '015',
+      '025',
+      '035',
+      '045',
+      '055',
+      '065',
+      '075',
+      '085',
+      '095', // Outros códigos
+      '014', '024', '034', '044', '054', '064', '074', '084', '094',
+      '012', '022', '032', '042', '052', '062', '072', '082', '092',
+      '013', '023', '033', '043', '053', '063', '073', '083', '093',
+    ];
+
+    // VERIFICAR E REMOVER PREFIXOS INDESEJADOS
+    for (final prefix in unwantedPrefixes) {
+      if (cleaned.startsWith(prefix)) {
+        cleaned = cleaned.substring(prefix.length);
+        debugPrint('   🧹 Prefixo $prefix removido → $cleaned');
+        break;
+      }
+    }
+
+    debugPrint('   ✅ Número limpo: $cleaned');
+    return cleaned;
+  }
+
+  // MÉTODO PARA VALIDAR DDD
+  static bool _hasValidDDD(String phone) {
+    if (phone.length < 2) return false;
+
+    // Se o número já começa com 55, pular os primeiros 2 dígitos
+    String numberToCheck = phone;
+    if (phone.startsWith('55') && phone.length > 2) {
+      numberToCheck = phone.substring(2);
+    }
+
+    if (numberToCheck.length < 2) return false;
+
+    final ddd = numberToCheck.substring(0, 2);
+    final validDDDs = [
+      '11',
+      '12',
+      '13',
+      '14',
+      '15',
+      '16',
+      '17',
+      '18',
+      '19',
+      '21',
+      '22',
+      '24',
+      '27',
+      '28',
+      '31',
+      '32',
+      '33',
+      '34',
+      '35',
+      '37',
+      '38',
+      '41',
+      '42',
+      '43',
+      '44',
+      '45',
+      '46',
+      '47',
+      '48',
+      '49',
+      '51',
+      '53',
+      '54',
+      '55',
+      '61',
+      '62',
+      '63',
+      '64',
+      '65',
+      '66',
+      '67',
+      '68',
+      '69',
+      '71',
+      '73',
+      '74',
+      '75',
+      '77',
+      '79',
+      '81',
+      '82',
+      '83',
+      '84',
+      '85',
+      '86',
+      '87',
+      '88',
+      '89',
+      '91',
+      '92',
+      '93',
+      '94',
+      '95',
+      '96',
+      '97',
+      '98',
+      '99',
+    ];
+
+    final isValid = validDDDs.contains(ddd);
+    if (!isValid) {
+      debugPrint('   ⚠️ DDD inválido detectado: $ddd');
+    }
+
+    return isValid;
+  }
+
+  // MÉTODO PÚBLICO PARA ACESSAR A FORMATAÇÃO
+  static String formatPhoneNumber(String phone) {
+    return _formatPhoneNumber(phone);
   }
 }

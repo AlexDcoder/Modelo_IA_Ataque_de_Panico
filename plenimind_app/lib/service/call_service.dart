@@ -155,28 +155,59 @@ class CallService {
 
   Future<bool> _makeCall(String phoneNumber) async {
     try {
-      debugPrint('📞 [CALL_SERVICE] Discando para: $phoneNumber');
+      debugPrint(
+        '📞 [CALL_SERVICE] Iniciando processo de chamada para: $phoneNumber',
+      );
 
+      // ✅ VALIDAÇÃO E FORMATAÇÃO CORRETA (COM +55)
+      final String formattedNumber =
+          ContactService.validateAndFormatPhoneNumber(phoneNumber);
+
+      debugPrint(
+        '📞 [CALL_SERVICE] Número formatado para discagem: $formattedNumber',
+      );
+
+      // ✅ VERIFICAR SE O NÚMERO TEM O FORMATO INTERNACIONAL CORRETO
+      if (!formattedNumber.startsWith('+55')) {
+        throw Exception(
+          'Número não está em formato internacional brasileiro: $formattedNumber',
+        );
+      }
+
+      // ✅ ACIONAR DISCADOR DO SISTEMA
       final bool? result = await FlutterPhoneDirectCaller.callNumber(
-        phoneNumber,
+        formattedNumber,
       );
 
       if (result == true) {
         debugPrint(
-          '✅ [CALL_SERVICE] Chamada iniciada com sucesso para: $phoneNumber',
+          '✅ [CALL_SERVICE] Discador do sistema acionado com sucesso para: $formattedNumber',
         );
         return true;
       } else {
-        debugPrint(
-          '❌ [CALL_SERVICE] Falha ao iniciar chamada para: $phoneNumber',
-        );
+        debugPrint('❌ [CALL_SERVICE] Falha ao acionar discador do sistema');
         return false;
       }
     } catch (e) {
-      debugPrint(
-        '❌ [CALL_SERVICE] Erro ao fazer chamada para $phoneNumber: $e',
-      );
-      return false;
+      debugPrint('❌ [CALL_SERVICE] Erro na chamada para $phoneNumber: $e');
+
+      // ✅ TRATAMENTO ESPECÍFICO PARA ERROS DE FORMATAÇÃO
+      if (e.toString().toLowerCase().contains('format') ||
+          e.toString().toLowerCase().contains('invalid') ||
+          e.toString().toLowerCase().contains('041') ||
+          e.toString().toLowerCase().contains('prefix') ||
+          e.toString().toLowerCase().contains('internacional')) {
+        throw Exception(
+          'Problema de formatação no número: $phoneNumber - ${e.toString()}',
+        );
+      } else if (e.toString().toLowerCase().contains('permission')) {
+        throw Exception('Permissão de telefone necessária');
+      } else if (e.toString().toLowerCase().contains('activity') ||
+          e.toString().toLowerCase().contains('intent')) {
+        throw Exception('Não foi possível abrir o discador do sistema');
+      } else {
+        throw Exception('Erro ao discar: ${e.toString()}');
+      }
     }
   }
 

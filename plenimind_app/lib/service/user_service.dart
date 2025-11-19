@@ -82,9 +82,11 @@ class UserService {
     }
   }
 
+  // ✅ MÉTODO ATUALIZADO PARA ALTERAÇÃO DE SENHA COM VALIDAÇÃO
   Future<UserPersonalDataResponse?> updateUserPassword({
     required String uid,
     required String newPassword,
+    String? currentPassword, // PARÂMETRO OPCIONAL PARA VALIDAÇÃO
   }) async {
     try {
       debugPrint('🔄 [USER_SERVICE] Atualizando senha para: $uid');
@@ -95,9 +97,20 @@ class UserService {
         return null;
       }
 
-      final response = await _apiClient.authenticatedPut('users/$uid', {
-        'password': newPassword,
-      }, token);
+      // PREPARAR DADOS PARA ENVIO
+      final Map<String, dynamic> updateData = {'password': newPassword};
+
+      // SE FOR FORNECIDA SENHA ATUAL, ADICIONAR À REQUISIÇÃO
+      if (currentPassword != null && currentPassword.isNotEmpty) {
+        updateData['current_password'] = currentPassword;
+        debugPrint('   🔐 Validação com senha atual habilitada');
+      }
+
+      final response = await _apiClient.authenticatedPut(
+        'users/$uid',
+        updateData,
+        token,
+      );
 
       if (response.statusCode == 200) {
         debugPrint('✅ [USER_SERVICE] Senha atualizada com sucesso');
@@ -107,6 +120,16 @@ class UserService {
         debugPrint(
           '❌ [USER_SERVICE] Update password failed: ${response.statusCode}',
         );
+
+        // LOG ESPECÍFICO PARA ERROS COMUNS
+        if (response.statusCode == 400) {
+          debugPrint(
+            '   📝 Possível erro: Senha atual incorreta ou nova senha inválida',
+          );
+        } else if (response.statusCode == 401) {
+          debugPrint('   🔐 Token expirado ou inválido');
+        }
+
         return null;
       }
     } catch (e) {

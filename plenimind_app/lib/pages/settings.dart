@@ -34,6 +34,14 @@ class _SettingsPageState extends State<SettingsPage> {
       TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
+  // CONTROLADORES PARA ALTERAÇÃO DE SENHA
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+  bool _isChangingPassword = false;
+
   @override
   void initState() {
     super.initState();
@@ -72,7 +80,7 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  // ✅ NOVO: Salvar apenas perfil (username e email)
+  // ✅ SALVAR APENAS PERFIL (username e email)
   Future<void> _saveProfile() async {
     if (_userData == null) return;
 
@@ -119,7 +127,7 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  // ✅ NOVO: Salvar apenas tempo de detecção
+  // ✅ SALVAR APENAS TEMPO DE DETECÇÃO
   Future<void> _saveDetectionTime() async {
     if (_userData == null) return;
 
@@ -164,7 +172,69 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  // ✅ NOVO: Salvar contatos de emergência
+  // ✅ NOVO: ALTERAR SENHA DO USUÁRIO
+  Future<void> _changePassword() async {
+    if (_newPasswordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('❌ As senhas não coincidem')),
+      );
+      return;
+    }
+
+    if (_newPasswordController.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ A senha deve ter pelo menos 6 caracteres'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isChangingPassword = true);
+
+    try {
+      debugPrint('🔄 [SETTINGS] Alterando senha...');
+      final userId = _authManager.userId;
+      if (userId == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      final result = await _userService.updateUserPassword(
+        uid: userId,
+        newPassword: _newPasswordController.text,
+        currentPassword: _currentPasswordController.text,
+      );
+
+      if (result != null) {
+        debugPrint('✅ [SETTINGS] Senha alterada com sucesso');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Senha alterada com sucesso!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // LIMPAR CAMPOS
+        _currentPasswordController.clear();
+        _newPasswordController.clear();
+        _confirmPasswordController.clear();
+      } else {
+        throw Exception('Falha ao alterar senha');
+      }
+    } catch (e) {
+      debugPrint('❌ [SETTINGS] Erro ao alterar senha: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erro ao alterar senha: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      setState(() => _isChangingPassword = false);
+    }
+  }
+
+  // ✅ SALVAR CONTATOS DE EMERGÊNCIA
   Future<void> _saveEmergencyContacts(List<EmergencyContact> contacts) async {
     try {
       debugPrint(
@@ -212,6 +282,50 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  // ✅ ADICIONAR NOVO CONTATO DE EMERGÊNCIA
+  Future<void> _addNewEmergencyContact(String name, String phone) async {
+    try {
+      final userId = _authManager.userId;
+      if (userId == null) return;
+
+      // ✅ VALIDAÇÃO E FORMATAÇÃO OBRIGATÓRIA
+      final formattedPhone = ContactService.validateAndFormatPhoneNumber(phone);
+
+      final contacts = await ContactService.getEmergencyContacts(userId);
+
+      // VERIFICAR SE JÁ EXISTE
+      if (contacts.any((c) => c.phone == formattedPhone)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Este número já está nos contatos de emergência'),
+          ),
+        );
+        return;
+      }
+
+      // CRIAR NOVO CONTATO
+      final newContact = EmergencyContact(
+        id: '${userId}_contact_${DateTime.now().millisecondsSinceEpoch}',
+        name: name,
+        phone: formattedPhone, // USAR NÚMERO VALIDADO/FORMATADO
+        imageUrl: '',
+        priority: contacts.length + 1,
+      );
+
+      // ADICIONAR À LISTA E SALVAR
+      contacts.add(newContact);
+      await _saveEmergencyContacts(contacts);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Contato adicionado com sucesso!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Erro ao adicionar contato: $e')),
+      );
+    }
+  }
+
   List<EmergencyContact> _convertDTOsToEmergencyContacts(
     List<EmergencyContactDTO> dtos,
   ) {
@@ -240,7 +354,7 @@ class _SettingsPageState extends State<SettingsPage> {
         .toList();
   }
 
-  // ✅ NOVO: Método para verificar status dos contatos
+  // ✅ MÉTODO PARA VERIFICAR STATUS DOS CONTATOS
   Widget _buildContactsStatus() {
     final contactCount = _userData?.emergencyContacts.length ?? 0;
 
@@ -249,19 +363,15 @@ class _SettingsPageState extends State<SettingsPage> {
         contactCount > 0 ? Icons.check_circle : Icons.warning,
         color: contactCount > 0 ? Colors.green : Colors.orange,
       ),
-      title: Text('Contatos de Emergência'),
+      title: const Text('Contatos de Emergência'),
       subtitle: Text(
         contactCount > 0
             ? '$contactCount contatos configurados'
             : 'Nenhum contato configurado',
       ),
-      trailing: Row(
+      trailing: const Row(
         mainAxisSize: MainAxisSize.min,
-        children: [
-          if (contactCount == 0)
-            Icon(Icons.warning, color: Colors.orange, size: 16),
-          const Icon(Icons.arrow_forward_ios, size: 16),
-        ],
+        children: [Icon(Icons.arrow_forward_ios, size: 16)],
       ),
       onTap: _showEmergencyContactsManager,
     );
@@ -379,6 +489,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   title: const Text('Gerenciar Contatos de Emergência'),
                   automaticallyImplyLeading: false,
                   actions: [
+                    // BOTÃO PARA ADICIONAR NOVO CONTATO
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: () => _showAddContactDialog(context),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () {
@@ -400,6 +515,82 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
               ],
             ),
+          ),
+    );
+  }
+
+  // ✅ NOVO: DIÁLOGO PARA ADICIONAR CONTATO
+  void _showAddContactDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+    bool isValidPhone = false;
+
+    showDialog(
+      context: context,
+      builder:
+          (context) => StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: const Text('Adicionar Contato de Emergência'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nome',
+                        hintText: 'Digite o nome do contato',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Telefone',
+                        hintText: '(11) 99999-9999',
+                        border: const OutlineInputBorder(),
+                        errorText: isValidPhone ? null : 'Número inválido',
+                        suffixIcon:
+                            isValidPhone
+                                ? Icon(Icons.check, color: Colors.green)
+                                : Icon(Icons.error, color: Colors.red),
+                      ),
+                      onChanged: (value) {
+                        try {
+                          ContactService.validateAndFormatPhoneNumber(value);
+                          setState(() => isValidPhone = true);
+                        } catch (e) {
+                          setState(() => isValidPhone = false);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancelar'),
+                  ),
+                  ElevatedButton(
+                    onPressed:
+                        isValidPhone && nameController.text.isNotEmpty
+                            ? () async {
+                              await _addNewEmergencyContact(
+                                nameController.text,
+                                phoneController.text,
+                              );
+                              if (mounted) {
+                                Navigator.pop(context);
+                              }
+                            }
+                            : null,
+                    child: const Text('Adicionar'),
+                  ),
+                ],
+              );
+            },
           ),
     );
   }
@@ -506,6 +697,81 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  // ✅ NOVA SEÇÃO: ALTERAÇÃO DE SENHA
+  Widget _buildChangePasswordSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Alterar Senha',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            // CAMPO SENHA ATUAL
+            TextField(
+              controller: _currentPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Senha Atual',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // CAMPO NOVA SENHA
+            TextField(
+              controller: _newPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Nova Senha',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_outline),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // CAMPO CONFIRMAR SENHA
+            TextField(
+              controller: _confirmPasswordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Confirmar Nova Senha',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock_reset),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // BOTÃO PARA ALTERAR SENHA
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isChangingPassword ? null : _changePassword,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange[50],
+                  foregroundColor: Colors.orange[700],
+                ),
+                child:
+                    _isChangingPassword
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Text('Alterar Senha'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAccountInfoSection() {
     return Card(
       child: Padding(
@@ -523,7 +789,7 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('ID do Usuário'),
               subtitle: Text(_authManager.userId ?? 'Não disponível'),
             ),
-            _buildContactsStatus(), // ✅ USAR O NOVO MÉTODO
+            _buildContactsStatus(),
             if (_userData?.detectionTime != null)
               ListTile(
                 leading: const Icon(Icons.schedule),
@@ -605,6 +871,8 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildUserInfoSection(),
               const SizedBox(height: 16),
               _buildDetectionTimeSection(),
+              const SizedBox(height: 16),
+              _buildChangePasswordSection(), // NOVA SEÇÃO ADICIONADA
               const SizedBox(height: 16),
               _buildAccountInfoSection(),
               const SizedBox(height: 16),

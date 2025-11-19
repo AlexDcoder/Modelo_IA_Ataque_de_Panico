@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart'; // ✅ Adicionar esta importação
+import 'package:flutter/material.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
 import 'package:plenimind_app/service/contact_service.dart';
 import 'package:plenimind_app/components/settings/settings_contact_item.dart';
@@ -25,11 +25,34 @@ class SettingsContactManagement extends StatefulWidget {
 class _SettingsContactManagementState extends State<SettingsContactManagement> {
   List<EmergencyContact> _contacts = [];
   bool _isLoading = false;
+  TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _contacts = List.from(widget.currentContacts);
+    _sortContactsByName();
+  }
+
+  void _sortContactsByName() {
+    _contacts.sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  List<EmergencyContact> _getFilteredContacts() {
+    if (_searchQuery.isEmpty) {
+      return _contacts;
+    }
+    return _contacts.where((contact) {
+      return contact.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          contact.phone.contains(_searchQuery);
+    }).toList();
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
   }
 
   Future<void> _loadDeviceContacts() async {
@@ -39,8 +62,6 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
 
     try {
       final deviceContacts = await ContactService.getDeviceContacts();
-
-      // Mostrar apenas contatos que não estão já selecionados
       final currentPhones = _contacts.map((c) => c.phone).toSet();
       final availableContacts =
           deviceContacts
@@ -51,7 +72,7 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Todos os contatos disponíveis já foram adicionados'),
-            backgroundColor: Colors.orange, // ✅ Agora Colors está disponível
+            backgroundColor: Colors.orange,
           ),
         );
         return;
@@ -62,7 +83,7 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erro ao carregar contatos: $e'),
-          backgroundColor: Colors.red, // ✅ Agora Colors está disponível
+          backgroundColor: Colors.red,
         ),
       );
     } finally {
@@ -121,7 +142,7 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Máximo de 5 contatos atingido'),
-          backgroundColor: Colors.orange, // ✅ Agora Colors está disponível
+          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -137,6 +158,7 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
 
     setState(() {
       _contacts.add(newContact);
+      _sortContactsByName();
     });
 
     _saveContacts();
@@ -145,7 +167,6 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
   void _removeContact(String contactId) {
     setState(() {
       _contacts.removeWhere((contact) => contact.id == contactId);
-      // Reorganizar prioridades
       for (int i = 0; i < _contacts.length; i++) {
         _contacts[i] = EmergencyContact(
           id: _contacts[i].id,
@@ -155,7 +176,38 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
           priority: i + 1,
         );
       }
+      _sortContactsByName();
     });
+    _saveContacts();
+  }
+
+  void _duplicateContact(String contactId) {
+    final contactToDuplicate = _contacts.firstWhere((c) => c.id == contactId);
+
+    if (_contacts.length >= 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Máximo de 5 contatos atingido'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final duplicatedContact = EmergencyContact(
+      id:
+          '${contactToDuplicate.id}_copy_${DateTime.now().millisecondsSinceEpoch}',
+      name: '${contactToDuplicate.name} (cópia)',
+      phone: contactToDuplicate.phone,
+      imageUrl: contactToDuplicate.imageUrl,
+      priority: _contacts.length + 1,
+    );
+
+    setState(() {
+      _contacts.add(duplicatedContact);
+      _sortContactsByName();
+    });
+
     _saveContacts();
   }
 
@@ -204,7 +256,6 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
         priority: newPriority,
       );
 
-      // Ordenar por prioridade
       _contacts.sort((a, b) => a.priority.compareTo(b.priority));
     });
 
@@ -217,6 +268,8 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredContacts = _getFilteredContacts();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -252,34 +305,36 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
           'Os contatos serão contactados em ordem de prioridade (1 = primeiro)',
           style: TextStyle(
             fontSize: widget.screenWidth * 0.035,
-            color: Colors.grey[600], // ✅ Agora Colors está disponível
+            color: Colors.grey[600],
           ),
         ),
+        SizedBox(height: widget.screenWidth * 0.03),
+
+        // SEARCH BAR ADICIONADO
+        SearchBar(controller: _searchController, onChanged: _onSearchChanged),
         SizedBox(height: widget.screenWidth * 0.03),
 
         if (_contacts.isEmpty)
           Container(
             padding: EdgeInsets.all(widget.screenWidth * 0.04),
             decoration: BoxDecoration(
-              color: Colors.grey[50], // ✅ Agora Colors está disponível
+              color: Colors.grey[50],
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: const Color.fromARGB(255, 59, 57, 57),
-              ), // ✅ Agora Colors está disponível
+              border: Border.all(color: const Color.fromARGB(255, 59, 57, 57)),
             ),
             child: Column(
               children: [
                 Icon(
                   Icons.contacts,
                   size: widget.screenWidth * 0.1,
-                  color: Colors.grey[400], // ✅ Agora Colors está disponível
+                  color: Colors.grey[400],
                 ),
                 SizedBox(height: widget.screenWidth * 0.02),
                 Text(
                   'Nenhum contato de emergência configurado',
                   style: TextStyle(
                     fontSize: widget.screenWidth * 0.04,
-                    color: Colors.grey[600], // ✅ Agora Colors está disponível
+                    color: Colors.grey[600],
                   ),
                 ),
                 SizedBox(height: widget.screenWidth * 0.02),
@@ -288,18 +343,19 @@ class _SettingsContactManagementState extends State<SettingsContactManagement> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: widget.screenWidth * 0.035,
-                    color: Colors.grey[500], // ✅ Agora Colors está disponível
+                    color: Colors.grey[500],
                   ),
                 ),
               ],
             ),
           )
         else
-          ..._contacts.map(
+          ...filteredContacts.map(
             (contact) => SettingsContactItem(
               contact: contact,
               onRemove: _removeContact,
               onPriorityChange: _updatePriority,
+              onDuplicate: _duplicateContact, // NOVA FUNÇÃO ADICIONADA
               maxPriority: _contacts.length,
               screenWidth: widget.screenWidth,
             ),

@@ -200,67 +200,6 @@ class _ProfilePageState extends State<ProfilePage> {
                             screenWidth: screenWidth,
                           ),
                         ),
-
-                        // Informações adicionais
-                        Padding(
-                          padding: EdgeInsets.all(screenWidth * 0.05),
-                          child: Container(
-                            padding: EdgeInsets.all(screenWidth * 0.04),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primary.withOpacity(0.3),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.info_outline,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                      size: screenWidth * 0.05,
-                                    ),
-                                    SizedBox(width: screenWidth * 0.02),
-                                    Text(
-                                      'Por que precisamos dessas informações?',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color:
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                        fontSize: screenWidth * 0.04,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: screenHeight * 0.01),
-                                Text(
-                                  '• Seu nome: Para personalizar suas notificações\n'
-                                  '• Tempo de detecção: Para configurar a frequência de monitoramento dos seus sinais vitais',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.bodySmall?.copyWith(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.onSurface.withOpacity(0.7),
-                                    fontSize: screenWidth * 0.035,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
