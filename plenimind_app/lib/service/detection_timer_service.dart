@@ -1,12 +1,17 @@
+// detection_timer_service.dart (ATUALIZADO)
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:plenimind_app/service/detection_time_manager.dart';
 
 class DetectionTimerService {
   Timer? _detectionTimer;
   Duration _currentInterval = const Duration(minutes: 30);
   Function? _onDetectionCallback;
   bool _isRunning = false;
-  bool _isProcessing = false; // Nova flag para controlar processamento
+  bool _isProcessing = false;
+
+  final DetectionTimeManager _detectionTimeManager = DetectionTimeManager();
+  StreamSubscription<Duration>? _detectionTimeSubscription;
 
   void startDetection({
     required Duration interval,
@@ -20,18 +25,55 @@ class DetectionTimerService {
     _onDetectionCallback = onDetection;
     _isRunning = true;
 
+    // ✅ INICIALIZAR DETECTION TIME MANAGER
+    _detectionTimeManager.initializeDetectionTime(interval);
+
+    // ✅ OUVIR MUDANÇAS NO DETECTION TIME
+    _setupDetectionTimeListener();
+
     _startTimer();
   }
 
-  void updateDetectionInterval(Duration newInterval) {
-    debugPrint(
-      '🔄 [DETECTION_TIMER] Atualizando intervalo: $_currentInterval → $newInterval',
-    );
+  void _setupDetectionTimeListener() {
+    _detectionTimeSubscription?.cancel();
 
-    _currentInterval = newInterval;
+    _detectionTimeSubscription = _detectionTimeManager.detectionTimeStream
+        .listen(
+          (newDuration) {
+            debugPrint(
+              '🎯 [DETECTION_TIMER] Nova duração recebida: $newDuration',
+            );
+            _handleDetectionTimeChange(newDuration);
+          },
+          onError: (error) {
+            debugPrint('❌ [DETECTION_TIMER] Erro no stream: $error');
+          },
+          onDone: () {
+            debugPrint('🔚 [DETECTION_TIMER] Stream fechado');
+          },
+        );
+  }
 
-    if (_isRunning) {
-      _restartTimer();
+  void _handleDetectionTimeChange(Duration newDuration) {
+    if (_currentInterval != newDuration) {
+      debugPrint(
+        '🔄 [DETECTION_TIMER] Atualizando intervalo: $_currentInterval → $newDuration',
+      );
+
+      _currentInterval = newDuration;
+
+      if (_isRunning) {
+        _restartTimer();
+
+        // ✅ NOTIFICAR INTERFACE SE NECESSÁRIO
+        debugPrint(
+          '✅ [DETECTION_TIMER] Timer reiniciado com novo intervalo: $newDuration',
+        );
+      } else {
+        debugPrint(
+          'ℹ️ [DETECTION_TIMER] Timer não está rodando, apenas atualizando intervalo',
+        );
+      }
     }
   }
 
@@ -47,6 +89,7 @@ class DetectionTimerService {
       }
 
       debugPrint('⏰ [DETECTION_TIMER] Timer disparado - executando callback');
+      debugPrint('   📊 Intervalo atual: $_currentInterval');
 
       _isProcessing = true;
       try {
@@ -64,12 +107,22 @@ class DetectionTimerService {
   }
 
   void _restartTimer() {
-    debugPrint('🔄 [DETECTION_TIMER] Reiniciando timer com novo intervalo');
+    debugPrint(
+      '🔄 [DETECTION_TIMER] Reiniciando timer com novo intervalo: $_currentInterval',
+    );
     _startTimer();
   }
 
-  // Método para verificar se está processando (útil para outras services)
-  bool get isProcessing => _isProcessing;
+  void updateDetectionInterval(Duration newInterval) {
+    debugPrint(
+      '🔄 [DETECTION_TIMER] Atualização manual do intervalo: $_currentInterval → $newInterval',
+    );
+    _currentInterval = newInterval;
+
+    if (_isRunning) {
+      _restartTimer();
+    }
+  }
 
   void stopDetection() {
     debugPrint('🛑 [DETECTION_TIMER] Parando detecção');
@@ -85,6 +138,7 @@ class DetectionTimerService {
   void dispose() {
     debugPrint('♻️ [DETECTION_TIMER] Dispose chamado');
     _detectionTimer?.cancel();
+    _detectionTimeSubscription?.cancel();
     _onDetectionCallback = null;
     _isProcessing = false;
   }

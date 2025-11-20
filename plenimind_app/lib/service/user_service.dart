@@ -5,10 +5,12 @@ import 'package:plenimind_app/schemas/dto/emergency_contact_dto.dart';
 import 'package:plenimind_app/service/api_client.dart';
 import 'package:plenimind_app/schemas/request/personal_data.dart';
 import 'package:plenimind_app/schemas/response/user_personal_request.dart';
+import 'package:plenimind_app/service/detection_time_manager.dart';
 
 class UserService {
   final ApiClient _apiClient = ApiClient();
   final AuthManager _authManager = AuthManager();
+  final DetectionTimeManager _detectionTimeManager = DetectionTimeManager();
 
   Future<UserPersonalDataResponse?> updateUserProfile({
     required String uid,
@@ -69,7 +71,17 @@ class UserService {
       if (response.statusCode == 200) {
         debugPrint('✅ [USER_SERVICE] DetectionTime atualizado com sucesso');
         final json = jsonDecode(response.body);
-        return UserPersonalDataResponse.fromJson(json);
+        final userResponse = UserPersonalDataResponse.fromJson(json);
+
+        // ✅ NOTIFICAR DETECTION TIME MANAGER
+        final newDuration = _parseDurationFromString(detectionTime);
+        _detectionTimeManager.updateDetectionTime(newDuration);
+
+        debugPrint(
+          '   📢 [USER_SERVICE] DetectionTimeManager notificado: $newDuration',
+        );
+
+        return userResponse;
       } else {
         debugPrint(
           '❌ [USER_SERVICE] Update detectionTime failed: ${response.statusCode}',
@@ -79,6 +91,22 @@ class UserService {
     } catch (e) {
       debugPrint('❌ [USER_SERVICE] Update detectionTime error: $e');
       return null;
+    }
+  }
+
+  Duration _parseDurationFromString(String timeString) {
+    try {
+      final parts = timeString.split(':');
+      if (parts.length == 3) {
+        return Duration(
+          hours: int.parse(parts[0]),
+          minutes: int.parse(parts[1]),
+          seconds: int.parse(parts[2]),
+        );
+      }
+      return const Duration(minutes: 30);
+    } catch (e) {
+      return const Duration(minutes: 30);
     }
   }
 

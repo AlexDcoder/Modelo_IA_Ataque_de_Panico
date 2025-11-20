@@ -170,6 +170,7 @@ class _SettingsPageState extends State<SettingsPage> {
         setState(() {
           _userData = result;
         });
+
         debugPrint('✅ [SETTINGS] Tempo de detecção salvo com sucesso');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -177,6 +178,8 @@ class _SettingsPageState extends State<SettingsPage> {
             duration: Duration(seconds: 2),
           ),
         );
+
+        // ✅ O DETECTION TIME MANAGER JÁ FOI NOTIFICADO PELO USER SERVICE
       } else {
         throw Exception('Falha ao atualizar tempo de detecção');
       }

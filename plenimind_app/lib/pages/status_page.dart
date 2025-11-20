@@ -1,9 +1,11 @@
+// status_page.dart
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/components/status/app_drawer.dart';
 import 'package:plenimind_app/pages/settings.dart';
 import 'dart:async';
 import 'package:plenimind_app/schemas/request/vital_data.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
+import 'package:plenimind_app/service/detection_time_manager.dart';
 import 'package:plenimind_app/service/user_service.dart';
 import 'package:plenimind_app/service/vital_data_service.dart';
 import 'package:plenimind_app/service/notification_service.dart';
@@ -24,6 +26,8 @@ class _StatusPageState extends State<StatusPage> {
   final VitalDataService _vitalDataService = VitalDataService();
   final NotificationService _notificationService = NotificationService();
   final AuthManager _authManager = AuthManager();
+  final DetectionTimeManager _detectionTimeManager =
+      DetectionTimeManager(); // ✅ NOVA INSTÂNCIA
 
   UserVitalData _vitalData = UserVitalData(
     heartRate: 72.0,
@@ -39,17 +43,98 @@ class _StatusPageState extends State<StatusPage> {
   String _userEmail = 'Carregando...';
   UserPersonalDataResponse? _userData;
   Timer? _pollingTimer;
+  StreamSubscription<Duration>?
+  _detectionTimeSubscription; // ✅ NOVA SUBSCRIPTION
+  Duration _currentPollingInterval = const Duration(
+    seconds: 30,
+  ); // ✅ NOVO ESTADO
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _setupDetectionTimeListener(); // ✅ CONFIGURAR OUVINTE
   }
 
   @override
   void dispose() {
+    _detectionTimeSubscription?.cancel(); // ✅ LIMPEZA DA SUBSCRIPTION
     _pollingTimer?.cancel();
     super.dispose();
+  }
+
+  // ✅ CONFIGURAR OUVINTE DE MUDANÇAS NO DETECTION TIME
+  void _setupDetectionTimeListener() {
+    _detectionTimeSubscription = _detectionTimeManager.detectionTimeStream
+        .listen(
+          (newDuration) {
+            debugPrint(
+              '🎯 [STATUS_PAGE] Nova duração recebida do manager: $newDuration',
+            );
+            _handleDetectionTimeUpdate(newDuration);
+          },
+          onError: (error) {
+            debugPrint(
+              '❌ [STATUS_PAGE] Erro no stream de detection time: $error',
+            );
+          },
+          onDone: () {
+            debugPrint('🔚 [STATUS_PAGE] Stream de detection time fechado');
+          },
+        );
+  }
+
+  // ✅ TRATAR ATUALIZAÇÃO DO DETECTION TIME
+  void _handleDetectionTimeUpdate(Duration newDuration) {
+    if (mounted) {
+      debugPrint(
+        '🔄 [STATUS_PAGE] Atualizando polling com novo intervalo: $newDuration',
+      );
+
+      // ✅ ATUALIZAR ESTADO LOCAL
+      setState(() {
+        _currentPollingInterval = newDuration;
+      });
+
+      // ✅ REINICIAR POLLING COM NOVO INTERVALO
+      _restartPollingWithNewInterval(newDuration);
+    }
+  }
+
+  // ✅ REINICIAR POLLING COM NOVO INTERVALO
+  void _restartPollingWithNewInterval(Duration newInterval) {
+    debugPrint(
+      '🔄 [STATUS_PAGE] Reiniciando polling com novo intervalo: $newInterval',
+    );
+
+    // ✅ CANCELAR TIMER ATUAL
+    _pollingTimer?.cancel();
+
+    // ✅ INICIAR NOVO TIMER
+    _startPollingWithInterval(newInterval);
+
+    // ✅ MOSTRAR FEEDBACK VISUAL
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '🔄 Intervalo atualizado: ${_formatDurationForDisplay(newInterval)}',
+          ),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  String _formatDurationForDisplay(Duration duration) {
+    if (duration.inHours > 0) {
+      return '${duration.inHours}h ${duration.inMinutes.remainder(60)}min';
+    } else if (duration.inMinutes > 0) {
+      return '${duration.inMinutes}min ${duration.inSeconds.remainder(60)}s';
+    } else {
+      return '${duration.inSeconds}s';
+    }
   }
 
   Duration _parseDetectionTime(String detectionTime) {
@@ -89,6 +174,13 @@ class _StatusPageState extends State<StatusPage> {
 
     if (_userData?.detectionTime != null) {
       pollingInterval = _parseDetectionTime(_userData!.detectionTime);
+
+      // ✅ INICIALIZAR DETECTION TIME MANAGER COM VALOR ATUAL
+      _detectionTimeManager.initializeDetectionTime(pollingInterval);
+
+      // ✅ ATUALIZAR ESTADO LOCAL
+      _currentPollingInterval = pollingInterval;
+
       debugPrint(
         '⏰ [STATUS_PAGE] Tempo de detecção carregado: ${_userData!.detectionTime}',
       );
@@ -102,9 +194,14 @@ class _StatusPageState extends State<StatusPage> {
     debugPrint(
       '🔁 [STATUS_PAGE] Iniciando polling com intervalo: $pollingInterval',
     );
+    _startPollingWithInterval(pollingInterval);
+  }
 
-    _pollingTimer = Timer.periodic(pollingInterval, (Timer t) {
+  // ✅ MÉTODO SEPARADO PARA INICIAR POLLING COM INTERVALO ESPECÍFICO
+  void _startPollingWithInterval(Duration interval) {
+    _pollingTimer = Timer.periodic(interval, (Timer t) {
       debugPrint('🔄 [STATUS_PAGE] Executando polling - ${DateTime.now()}');
+      debugPrint('   📊 Intervalo atual: $interval');
       _loadVitalDataAndProcess();
     });
   }
@@ -140,7 +237,6 @@ class _StatusPageState extends State<StatusPage> {
     }
   }
 
-  // No método _loadVitalDataAndProcess, garantir que está passando o contexto corretamente:
   Future<void> _loadVitalDataAndProcess() async {
     try {
       debugPrint('🔄 [STATUS_PAGE] Iniciando processamento de dados vitais...');
@@ -326,6 +422,41 @@ class _StatusPageState extends State<StatusPage> {
     );
   }
 
+  // ✅ NOVO WIDGET: INDICADOR DE INTERVALO ATUAL
+  Widget _buildIntervalIndicator() {
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.width * 0.03),
+      padding: EdgeInsets.all(MediaQuery.of(context).size.width * 0.03),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue[200]!),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.schedule, color: Colors.blue[600], size: 16),
+          SizedBox(width: 8),
+          Text(
+            'Intervalo de monitoramento: ',
+            style: TextStyle(color: Colors.blue[700], fontSize: 14),
+          ),
+          Text(
+            _formatDurationForDisplay(_currentPollingInterval),
+            style: TextStyle(
+              color: Colors.blue[700],
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(width: 8),
+          Icon(Icons.autorenew, color: Colors.blue[600], size: 14),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLoadingScreen() {
     return Center(
       child: Column(
@@ -398,7 +529,7 @@ class _StatusPageState extends State<StatusPage> {
             Container(
               padding: EdgeInsets.all(screenWidth * 0.03),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
+                color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: screenWidth * 0.07),
@@ -426,7 +557,7 @@ class _StatusPageState extends State<StatusPage> {
               height: 2,
               width: screenWidth * 0.1,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.5),
+                color: color.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(1),
               ),
             ),
@@ -459,6 +590,7 @@ class _StatusPageState extends State<StatusPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildContactsWarning(),
+          _buildIntervalIndicator(), // ✅ INDICADOR ADICIONADO
           SizedBox(height: screenHeight * 0.03),
           Expanded(
             child: GridView.count(
