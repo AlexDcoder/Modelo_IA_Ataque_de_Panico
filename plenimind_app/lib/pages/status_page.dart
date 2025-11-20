@@ -39,7 +39,6 @@ class _StatusPageState extends State<StatusPage> {
   String _userEmail = 'Carregando...';
   UserPersonalDataResponse? _userData;
   Timer? _pollingTimer;
-  DateTime? _lastUpdateTime;
 
   @override
   void initState() {
@@ -182,7 +181,6 @@ class _StatusPageState extends State<StatusPage> {
       if (mounted) {
         setState(() {
           _vitalData = currentVitalData;
-          _lastUpdateTime = DateTime.now();
         });
         debugPrint('✅ [STATUS_PAGE] Interface atualizada');
       }
@@ -236,7 +234,6 @@ class _StatusPageState extends State<StatusPage> {
           FakeDataGenerator.generateFakeVitalDataWithPanicChance();
       setState(() {
         _vitalData = fakeVitalData;
-        _lastUpdateTime = DateTime.now();
       });
 
       debugPrint(
@@ -256,7 +253,6 @@ class _StatusPageState extends State<StatusPage> {
       setState(() {
         _vitalData = fakeVitalData;
         _isLoading = false;
-        _lastUpdateTime = DateTime.now();
         _errorMessage = 'Erro ao carregar dados: $e - Usando dados simulados';
       });
 
@@ -272,7 +268,7 @@ class _StatusPageState extends State<StatusPage> {
     setState(() => _isRefreshing = false);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Dados atualizados!'),
+        content: Text('Operação concluída'),
         duration: Duration(seconds: 1),
       ),
     );
@@ -402,7 +398,7 @@ class _StatusPageState extends State<StatusPage> {
             Container(
               padding: EdgeInsets.all(screenWidth * 0.03),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: screenWidth * 0.07),
@@ -430,7 +426,7 @@ class _StatusPageState extends State<StatusPage> {
               height: 2,
               width: screenWidth * 0.1,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.5),
+                color: color.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(1),
               ),
             ),
@@ -463,109 +459,6 @@ class _StatusPageState extends State<StatusPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildContactsWarning(),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (_lastUpdateTime != null)
-                Tooltip(
-                  message: 'Última atualização: ${_lastUpdateTime!.toString()}',
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.02,
-                      vertical: screenHeight * 0.005,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.green[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.check_circle,
-                          size: screenWidth * 0.035,
-                          color: Colors.green[600],
-                        ),
-                        SizedBox(width: screenWidth * 0.01),
-                        Text(
-                          'Atualizado',
-                          style: TextStyle(
-                            fontSize: screenWidth * 0.03,
-                            color: Colors.green[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          SizedBox(height: screenHeight * 0.01),
-
-          if (_userData?.detectionTime != null) ...[
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.03,
-                vertical: screenHeight * 0.01,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.schedule,
-                    size: screenWidth * 0.04,
-                    color: Colors.blue[600],
-                  ),
-                  SizedBox(width: screenWidth * 0.02),
-                  Text(
-                    'Monitoramento a cada ${_userData!.detectionTime}',
-                    style: TextStyle(
-                      fontSize: screenWidth * 0.035,
-                      color: Colors.blue[700],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: screenHeight * 0.01),
-          ],
-
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.03,
-              vertical: screenHeight * 0.01,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.green[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.green[200]!),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.info,
-                  size: screenWidth * 0.04,
-                  color: Colors.green[600],
-                ),
-                SizedBox(width: screenWidth * 0.02),
-                Text(
-                  'Sistema de monitoramento ativo',
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.035,
-                    color: Colors.green[700],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
           SizedBox(height: screenHeight * 0.03),
           Expanded(
             child: GridView.count(

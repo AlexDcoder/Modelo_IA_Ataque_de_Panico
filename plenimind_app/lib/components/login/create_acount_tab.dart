@@ -52,6 +52,7 @@ class CreateAccountTab extends StatelessWidget {
               labelText: 'Email',
               keyboardType: TextInputType.emailAddress,
               screenWidth: screenWidth,
+              isEmail: true,
             ),
             SizedBox(height: screenWidth * 0.04),
             LoginTextField(

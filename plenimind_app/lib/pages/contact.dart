@@ -328,7 +328,7 @@ class _ContactPageState extends State<ContactPage> {
             Icon(
               Icons.lock_person,
               size: screenWidth * 0.14,
-              color: colorScheme.onSurface.withOpacity(0.6),
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             SizedBox(height: screenHeight * 0.02),
             Text(
@@ -344,7 +344,7 @@ class _ContactPageState extends State<ContactPage> {
               'Aceite os termos e condições para conceder acesso aos seus contatos.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: colorScheme.onSurface.withOpacity(0.7),
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
                 fontSize: screenWidth * 0.035,
               ),
             ),
@@ -407,7 +407,7 @@ class _ContactPageState extends State<ContactPage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: screenWidth * 0.04,
-                color: colorScheme.onSurface.withOpacity(0.7),
+                color: colorScheme.onSurface.withValues(alpha: 0.7),
                 height: 1.4,
               ),
             ),
@@ -475,7 +475,9 @@ class _ContactPageState extends State<ContactPage> {
                     if (_emergencyContacts.isNotEmpty) ...[
                       Container(
                         width: double.infinity,
-                        color: colorScheme.primaryContainer.withOpacity(0.3),
+                        color: colorScheme.primaryContainer.withValues(
+                          alpha: 0.3,
+                        ),
                         padding: EdgeInsets.all(screenWidth * 0.04),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -550,8 +552,9 @@ class _ContactPageState extends State<ContactPage> {
                                       Icon(
                                         Icons.contacts,
                                         size: screenWidth * 0.15,
-                                        color: colorScheme.onSurface
-                                            .withOpacity(0.6),
+                                        color: colorScheme.onSurface.withValues(
+                                          alpha: 0.6,
+                                        ),
                                       ),
                                       SizedBox(height: screenHeight * 0.02),
                                       Text(

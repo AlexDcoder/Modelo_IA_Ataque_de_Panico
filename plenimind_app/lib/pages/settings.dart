@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:plenimind_app/components/status/notifications/emergency_contact_manager.dart';
+import 'package:plenimind_app/components/settings/device_contacts_selector.dart';
+import 'package:plenimind_app/components/profile/profile_time_field.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
 import 'package:plenimind_app/pages/login.dart';
 import 'package:plenimind_app/service/account_service.dart';
@@ -9,6 +10,7 @@ import 'package:plenimind_app/components/utils/loading_overlay.dart';
 import 'package:plenimind_app/schemas/response/user_personal_request.dart';
 import 'package:plenimind_app/schemas/dto/emergency_contact_dto.dart';
 import 'package:plenimind_app/schemas/contacts/emergency_contact.dart';
+import 'package:plenimind_app/utils/email_validator.dart';
 
 class SettingsPage extends StatefulWidget {
   static const String routePath = '/settings';
@@ -26,8 +28,8 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _isLoading = false;
   bool _isSavingProfile = false;
   bool _isSavingDetectionTime = false;
-  String _userEmail = '';
   UserPersonalDataResponse? _userData;
+  bool _isEmailValid = true;
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _detectionTimeController =
@@ -46,6 +48,13 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadUserData();
+    _emailController.addListener(_onEmailChanged);
+  }
+
+  void _onEmailChanged() {
+    setState(() {
+      _isEmailValid = EmailValidator.isValid(_emailController.text);
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -61,7 +70,6 @@ class _SettingsPageState extends State<SettingsPage> {
         if (userResponse != null) {
           setState(() {
             _userData = userResponse;
-            _userEmail = userResponse.email;
             _usernameController.text = userResponse.username;
             _detectionTimeController.text = userResponse.detectionTime;
             _emailController.text = userResponse.email;
@@ -84,6 +92,20 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _saveProfile() async {
     if (_userData == null) return;
 
+    // Validar email antes de salvar
+    if (!EmailValidator.isValid(_emailController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            EmailValidator.getErrorMessage(_emailController.text) ??
+                'Email inválido',
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSavingProfile = true);
 
     try {
@@ -102,7 +124,6 @@ class _SettingsPageState extends State<SettingsPage> {
       if (result != null) {
         setState(() {
           _userData = result;
-          _userEmail = result.email;
         });
         debugPrint('✅ [SETTINGS] Perfil salvo com sucesso');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -282,50 +303,6 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  // ✅ ADICIONAR NOVO CONTATO DE EMERGÊNCIA
-  Future<void> _addNewEmergencyContact(String name, String phone) async {
-    try {
-      final userId = _authManager.userId;
-      if (userId == null) return;
-
-      // ✅ VALIDAÇÃO E FORMATAÇÃO OBRIGATÓRIA
-      final formattedPhone = ContactService.validateAndFormatPhoneNumber(phone);
-
-      final contacts = await ContactService.getEmergencyContacts(userId);
-
-      // VERIFICAR SE JÁ EXISTE
-      if (contacts.any((c) => c.phone == formattedPhone)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Este número já está nos contatos de emergência'),
-          ),
-        );
-        return;
-      }
-
-      // CRIAR NOVO CONTATO
-      final newContact = EmergencyContact(
-        id: '${userId}_contact_${DateTime.now().millisecondsSinceEpoch}',
-        name: name,
-        phone: formattedPhone, // USAR NÚMERO VALIDADO/FORMATADO
-        imageUrl: '',
-        priority: contacts.length + 1,
-      );
-
-      // ADICIONAR À LISTA E SALVAR
-      contacts.add(newContact);
-      await _saveEmergencyContacts(contacts);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Contato adicionado com sucesso!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Erro ao adicionar contato: $e')),
-      );
-    }
-  }
-
   List<EmergencyContact> _convertDTOsToEmergencyContacts(
     List<EmergencyContactDTO> dtos,
   ) {
@@ -486,19 +463,14 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               children: [
                 AppBar(
-                  title: const Text('Gerenciar Contatos de Emergência'),
+                  title: const Text('Adicionar Contatos de Emergência'),
                   automaticallyImplyLeading: false,
                   actions: [
-                    // BOTÃO PARA ADICIONAR NOVO CONTATO
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: () => _showAddContactDialog(context),
-                    ),
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () {
                         debugPrint(
-                          '❌ [SETTINGS] Gerenciador de contatos fechado',
+                          '✅ [SETTINGS] Gerenciador de contatos fechado',
                         );
                         Navigator.pop(context);
                       },
@@ -506,11 +478,16 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
                 Expanded(
-                  child: EmergencyContactManager(
-                    initialContacts: initialContacts,
-                    onContactsUpdated: _saveEmergencyContacts,
-                    screenWidth: MediaQuery.of(context).size.width,
+                  child: DeviceContactsSelector(
                     userId: userId,
+                    initialContacts: initialContacts,
+                    onContactsSelected: (List<EmergencyContact> contacts) {
+                      debugPrint(
+                        '✅ [SETTINGS] ${contacts.length} contatos selecionados',
+                      );
+                      _saveEmergencyContacts(contacts);
+                    },
+                    screenWidth: MediaQuery.of(context).size.width,
                   ),
                 ),
               ],
@@ -519,83 +496,12 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ✅ NOVO: DIÁLOGO PARA ADICIONAR CONTATO
-  void _showAddContactDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    bool isValidPhone = false;
-
-    showDialog(
-      context: context,
-      builder:
-          (context) => StatefulBuilder(
-            builder: (context, setState) {
-              return AlertDialog(
-                title: const Text('Adicionar Contato de Emergência'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome',
-                        hintText: 'Digite o nome do contato',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Telefone',
-                        hintText: '(11) 99999-9999',
-                        border: const OutlineInputBorder(),
-                        errorText: isValidPhone ? null : 'Número inválido',
-                        suffixIcon:
-                            isValidPhone
-                                ? Icon(Icons.check, color: Colors.green)
-                                : Icon(Icons.error, color: Colors.red),
-                      ),
-                      onChanged: (value) {
-                        try {
-                          ContactService.validateAndFormatPhoneNumber(value);
-                          setState(() => isValidPhone = true);
-                        } catch (e) {
-                          setState(() => isValidPhone = false);
-                        }
-                      },
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancelar'),
-                  ),
-                  ElevatedButton(
-                    onPressed:
-                        isValidPhone && nameController.text.isNotEmpty
-                            ? () async {
-                              await _addNewEmergencyContact(
-                                nameController.text,
-                                phoneController.text,
-                              );
-                              if (mounted) {
-                                Navigator.pop(context);
-                              }
-                            }
-                            : null,
-                    child: const Text('Adicionar'),
-                  ),
-                ],
-              );
-            },
-          ),
-    );
-  }
-
   Widget _buildUserInfoSection() {
+    final emailError =
+        _emailController.text.isNotEmpty && !_isEmailValid
+            ? EmailValidator.getErrorMessage(_emailController.text)
+            : null;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -618,10 +524,27 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 12),
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Email',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(
+                    color:
+                        emailError != null
+                            ? Colors.red
+                            : _isEmailValid && _emailController.text.isNotEmpty
+                            ? Colors.green
+                            : Colors.grey,
+                  ),
+                ),
+                prefixIcon: const Icon(Icons.email),
+                errorText: emailError,
+                suffixIcon:
+                    _emailController.text.isNotEmpty
+                        ? Icon(
+                          _isEmailValid ? Icons.check_circle : Icons.error,
+                          color: _isEmailValid ? Colors.green : Colors.red,
+                        )
+                        : null,
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -629,7 +552,8 @@ class _SettingsPageState extends State<SettingsPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSavingProfile ? null : _saveProfile,
+                onPressed:
+                    _isSavingProfile || !_isEmailValid ? null : _saveProfile,
                 child:
                     _isSavingProfile
                         ? const SizedBox(
@@ -647,6 +571,11 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildDetectionTimeSection() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final detectionTimeDuration = _parseDurationFromString(
+      _detectionTimeController.text,
+    );
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -663,14 +592,18 @@ class _SettingsPageState extends State<SettingsPage> {
               style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 12),
-            TextField(
+            // ✅ REUTILIZAR ProfileTimeField (mesmo componente do Profile)
+            ProfileTimeField(
               controller: _detectionTimeController,
-              decoration: const InputDecoration(
-                labelText: 'Tempo de Detecção',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.timer),
-                hintText: 'Ex: 00:30:00',
-              ),
+              focusNode: FocusNode(),
+              initialDuration: detectionTimeDuration,
+              onDurationChanged: (Duration newDuration) {
+                _detectionTimeController.text =
+                    "${newDuration.inHours.toString().padLeft(2, '0')}:"
+                    "${(newDuration.inMinutes % 60).toString().padLeft(2, '0')}:"
+                    "${(newDuration.inSeconds % 60).toString().padLeft(2, '0')}";
+              },
+              screenWidth: screenWidth,
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -695,6 +628,22 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+  }
+
+  Duration _parseDurationFromString(String timeString) {
+    try {
+      final parts = timeString.split(':');
+      if (parts.length == 3) {
+        return Duration(
+          hours: int.parse(parts[0]),
+          minutes: int.parse(parts[1]),
+          seconds: int.parse(parts[2]),
+        );
+      }
+      return const Duration(hours: 0, minutes: 30, seconds: 0);
+    } catch (e) {
+      return const Duration(hours: 0, minutes: 30, seconds: 0);
+    }
   }
 
   // ✅ NOVA SEÇÃO: ALTERAÇÃO DE SENHA

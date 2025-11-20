@@ -105,12 +105,6 @@ class NotificationService {
     }
   }
 
-  int _generateNotificationId() {
-    final id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
-    debugPrint('🔔 [NOTIFICATION_SERVICE] ID de notificação gerado: $id');
-    return id;
-  }
-
   Future<void> clearAllNotifications() async {
     debugPrint('🔄 [NOTIFICATION_SERVICE] Limpando todas as notificações...');
     await AwesomeNotifications().cancelAll();

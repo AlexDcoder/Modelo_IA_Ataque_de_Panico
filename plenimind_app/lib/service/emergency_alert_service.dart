@@ -135,7 +135,7 @@ class EmergencyAlertService {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('❌ Nenhum contato com número válido encontrado'),
-              duration: const Duration(seconds: 5),
+              duration: Duration(seconds: 5),
             ),
           );
         }
