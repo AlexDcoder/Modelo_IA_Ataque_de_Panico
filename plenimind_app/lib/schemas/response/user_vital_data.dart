@@ -1,28 +1,37 @@
-import 'package:plenimind_app/schemas/request/vital_data.dart';
-
-class UserVitalDataResponse extends UserVitalData {
+class UserVitalDataResponse {
   final String uid;
+  final double heartRate;
+  final double respirationRate;
+  final double accelStd;
+  final double spo2;
+  final double stressLevel;
 
   UserVitalDataResponse({
-    required super.heartRate,
-    required super.respirationRate,
-    required super.accelStd,
-    required super.spo2,
-    required super.stressLevel,
     required this.uid,
+    required this.heartRate,
+    required this.respirationRate,
+    required this.accelStd,
+    required this.spo2,
+    required this.stressLevel,
   });
 
   factory UserVitalDataResponse.fromJson(Map<String, dynamic> json) {
     return UserVitalDataResponse(
-      heartRate: (json['heart_rate'] as num).toDouble(),
-      respirationRate: (json['respiration_rate'] as num).toDouble(),
-      accelStd: (json['accel_std'] as num).toDouble(),
-      spo2: (json['spo2'] as num).toDouble(),
-      stressLevel: (json['stress_level'] as num).toDouble(),
-      uid: json['uid'],
+      uid: json['uid'] ?? '',
+      heartRate: (json['heart_rate'] as num?)?.toDouble() ?? 0.0,
+      respirationRate: (json['respiration_rate'] as num?)?.toDouble() ?? 0.0,
+      accelStd: (json['accel_std'] as num?)?.toDouble() ?? 0.0,
+      spo2: (json['spo2'] as num?)?.toDouble() ?? 0.0,
+      stressLevel: (json['stress_level'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
-  @override
-  Map<String, dynamic> toJson() => {...super.toJson(), 'uid': uid};
+  Map<String, dynamic> toJson() => {
+    'uid': uid,
+    'heart_rate': heartRate,
+    'respiration_rate': respirationRate,
+    'accel_std': accelStd,
+    'spo2': spo2,
+    'stress_level': stressLevel,
+  };
 }

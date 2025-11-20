@@ -3,6 +3,8 @@ import 'package:plenimind_app/theme/colors_pallet.dart';
 import 'package:plenimind_app/components/terms_conditions/custom_app_bar.dart';
 
 class NextScreen extends StatelessWidget {
+  const NextScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -10,7 +12,9 @@ class NextScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: CustomAppBar(),
+      appBar: CustomAppBar(
+        screenWidth: MediaQuery.of(context).size.width * 0.4,
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

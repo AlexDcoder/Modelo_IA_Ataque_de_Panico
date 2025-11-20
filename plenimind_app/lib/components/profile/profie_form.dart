@@ -7,8 +7,14 @@ import 'profile_time_field.dart';
 class ProfileForm extends StatelessWidget {
   final CreateProfileModel model;
   final VoidCallback onNext;
+  final double screenWidth;
 
-  const ProfileForm({super.key, required this.model, required this.onNext});
+  const ProfileForm({
+    super.key,
+    required this.model,
+    required this.onNext,
+    required this.screenWidth,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +23,7 @@ class ProfileForm extends StatelessWidget {
         ProfileNameField(
           controller: model.yourNameTextController!,
           focusNode: model.yourNameFocusNode!,
+          screenWidth: screenWidth,
         ),
         ProfileTimeField(
           controller: model.cityTextController!,
@@ -25,8 +32,9 @@ class ProfileForm extends StatelessWidget {
           onDurationChanged: (newDuration) {
             model.selectedDuration = newDuration;
           },
+          screenWidth: screenWidth,
         ),
-        ProfileNextButton(onPressed: onNext),
+        ProfileNextButton(onPressed: onNext, screenWidth: screenWidth),
       ],
     );
   }

@@ -7,6 +7,7 @@ class ProfileTimeField extends StatelessWidget {
   final FocusNode focusNode;
   final Duration initialDuration;
   final void Function(Duration) onDurationChanged;
+  final double screenWidth;
 
   const ProfileTimeField({
     super.key,
@@ -14,20 +15,25 @@ class ProfileTimeField extends StatelessWidget {
     required this.focusNode,
     required this.initialDuration,
     required this.onDurationChanged,
+    required this.screenWidth,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.05,
+        vertical: screenWidth * 0.02,
+      ),
       child: TextFormField(
         controller: controller,
         focusNode: focusNode,
         readOnly: true,
         decoration: InputDecoration(
-          labelText: 'Select Detection Time',
+          labelText: 'Tempo de Detecção',
           labelStyle: GoogleFonts.inter(
             color: Theme.of(context).textTheme.labelMedium?.color,
+            fontSize: screenWidth * 0.04,
           ),
           hintText: 'hh:mm:ss',
           enabledBorder: OutlineInputBorder(
@@ -46,6 +52,12 @@ class ProfileTimeField extends StatelessWidget {
           ),
           filled: true,
           fillColor: Theme.of(context).scaffoldBackgroundColor,
+          contentPadding: EdgeInsets.all(screenWidth * 0.04),
+          suffixIcon: IconButton(
+            icon: Icon(Icons.arrow_forward_ios, size: screenWidth * 0.04),
+            onPressed: () => _showTimerPicker(context),
+            tooltip: 'Selecionar tempo',
+          ),
         ),
         onTap: () => _showTimerPicker(context),
       ),
@@ -53,17 +65,75 @@ class ProfileTimeField extends StatelessWidget {
   }
 
   void _showTimerPicker(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     Duration tempDuration = initialDuration;
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       builder:
-          (_) => SizedBox(
-            height: 250,
+          (_) => Container(
+            height: screenHeight * 0.4,
+            padding: EdgeInsets.all(screenWidth * 0.04),
             child: Column(
               children: [
-                SizedBox(
-                  height: 200,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Selecionar Tempo',
+                      style: GoogleFonts.inter(
+                        fontSize: screenWidth * 0.045,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: Text(
+                            'Cancelar',
+                            style: GoogleFonts.inter(
+                              color: Colors.grey[600],
+                              fontSize: screenWidth * 0.04,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.02),
+                        IconButton(
+                          onPressed: () {
+                            controller.text =
+                                "${tempDuration.inHours.toString().padLeft(2, '0')}:"
+                                "${(tempDuration.inMinutes % 60).toString().padLeft(2, '0')}:"
+                                "${(tempDuration.inSeconds % 60).toString().padLeft(2, '0')}";
+                            onDurationChanged(tempDuration);
+                            Navigator.of(context).pop();
+                          },
+                          icon: Container(
+                            width: screenWidth * 0.1,
+                            height: screenWidth * 0.1,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.arrow_forward,
+                              color: Colors.white,
+                              size: screenWidth * 0.05,
+                            ),
+                          ),
+                          tooltip: 'Confirmar',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: screenHeight * 0.02),
+
+                Expanded(
                   child: CupertinoTimerPicker(
                     mode: CupertinoTimerPickerMode.hms,
                     initialTimerDuration: initialDuration,
@@ -72,16 +142,43 @@ class ProfileTimeField extends StatelessWidget {
                     },
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    controller.text =
+
+                Container(
+                  padding: EdgeInsets.all(screenWidth * 0.03),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.access_time,
+                        color: Theme.of(context).primaryColor,
+                        size: screenWidth * 0.04,
+                      ),
+                      SizedBox(width: screenWidth * 0.02),
+                      Text(
+                        'Tempo selecionado: ',
+                        style: GoogleFonts.inter(
+                          fontSize: screenWidth * 0.035,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      Text(
                         "${tempDuration.inHours.toString().padLeft(2, '0')}:"
                         "${(tempDuration.inMinutes % 60).toString().padLeft(2, '0')}:"
-                        "${(tempDuration.inSeconds % 60).toString().padLeft(2, '0')}";
-                    onDurationChanged(tempDuration);
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Confirm'),
+                        "${(tempDuration.inSeconds % 60).toString().padLeft(2, '0')}",
+                        style: GoogleFonts.inter(
+                          fontSize: screenWidth * 0.035,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

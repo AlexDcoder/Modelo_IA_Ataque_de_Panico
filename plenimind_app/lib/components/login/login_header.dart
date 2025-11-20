@@ -2,26 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class LoginHeader extends StatelessWidget {
-  const LoginHeader({super.key});
+  final double screenWidth;
+
+  const LoginHeader({super.key, required this.screenWidth});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(32, 12, 32, 32),
+      padding: EdgeInsets.fromLTRB(
+        screenWidth * 0.05,
+        screenWidth * 0.03,
+        screenWidth * 0.05,
+        screenWidth * 0.05,
+      ),
       child: Container(
         width: double.infinity,
-        height: 230,
+        height: screenWidth * 0.3,
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         alignment: Alignment.center,
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 72),
+          padding: EdgeInsets.only(bottom: screenWidth * 0.1),
           child: Text(
             'PleniMind',
             style: GoogleFonts.interTight(
-              fontSize: 32,
+              fontSize: screenWidth * 0.08,
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,
             ),

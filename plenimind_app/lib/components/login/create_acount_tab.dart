@@ -12,6 +12,7 @@ class CreateAccountTab extends StatelessWidget {
   final ValueChanged<bool> onPasswordVisibilityChanged;
   final bool isLoading;
   final VoidCallback onSubmit;
+  final double screenWidth;
 
   const CreateAccountTab({
     super.key,
@@ -23,43 +24,54 @@ class CreateAccountTab extends StatelessWidget {
     required this.onPasswordVisibilityChanged,
     required this.isLoading,
     required this.onSubmit,
+    required this.screenWidth,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      padding: EdgeInsets.fromLTRB(
+        screenWidth * 0.05,
+        screenWidth * 0.03,
+        screenWidth * 0.05,
+        0,
+      ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             LoginFormHeader(
-              title: 'Create Account',
-              subtitle: "Let's get started by filling out the form below.",
+              title: 'Criar Conta',
+              subtitle: "Vamos começar preenchendo o formulário abaixo.",
+              screenWidth: screenWidth,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: screenWidth * 0.05),
             LoginTextField(
               controller: emailController,
               focusNode: emailFocusNode,
               labelText: 'Email',
               keyboardType: TextInputType.emailAddress,
+              screenWidth: screenWidth,
+              isEmail: true,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: screenWidth * 0.04),
             LoginTextField(
               controller: passwordController,
               focusNode: passwordFocusNode,
-              labelText: 'Password',
+              labelText: 'Senha',
               isPassword: true,
               passwordVisible: passwordVisible,
               onPasswordVisibilityChanged: onPasswordVisibilityChanged,
+              screenWidth: screenWidth,
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: screenWidth * 0.05),
             LoginButton(
-              text: 'Get Started',
+              text: 'Começar',
               isLoading: isLoading,
               onPressed: onSubmit,
+              screenWidth: screenWidth,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: screenWidth * 0.04),
           ],
         ),
       ),

@@ -20,7 +20,7 @@ class LoginTabBar extends StatelessWidget {
           fontWeight: FontWeight.w600,
           fontSize: 16,
         ),
-        tabs: const [Tab(text: 'Create Account'), Tab(text: 'Log In')],
+        tabs: const [Tab(text: 'Criar Conta'), Tab(text: 'Entrar')],
       ),
     );
   }
