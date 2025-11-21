@@ -4,10 +4,12 @@ import 'package:plenimind_app/schemas/request/vital_data.dart';
 import 'package:plenimind_app/service/ai_service.dart';
 import 'package:plenimind_app/service/emergency_alert_service.dart';
 import 'package:plenimind_app/core/auth/permission_manager.dart';
+import 'package:plenimind_app/service/auth_state_manager.dart';
 
 class NotificationService {
   final AIService _aiService = AIService();
   final EmergencyAlertService _emergencyAlertService = EmergencyAlertService();
+  final AuthStateManager _authStateManager = AuthStateManager();
 
   static const String _panicDetectionChannel = 'panic_detection_channel';
   static const String _normalStatusChannel = 'normal_status_channel';
@@ -71,6 +73,14 @@ class NotificationService {
     BuildContext context,
   ) async {
     try {
+      // ✅ VERIFICAR SE USUÁRIO AINDA ESTÁ AUTENTICADO
+      if (_authStateManager.currentState != AuthState.authenticated) {
+        debugPrint(
+          '⚠️ [NOTIFICATION_SERVICE] Usuário não autenticado - ignorando processamento',
+        );
+        return;
+      }
+
       debugPrint(
         '🧠 [NOTIFICATION_SERVICE] Processando dados vitais para IA...',
       );

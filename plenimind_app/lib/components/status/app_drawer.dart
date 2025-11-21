@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:plenimind_app/core/auth/auth_manager.dart';
 import 'package:plenimind_app/pages/login.dart';
+import 'package:plenimind_app/pages/splash.dart';
 import 'package:plenimind_app/pages/settings.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/service/account_service.dart';
+import 'package:plenimind_app/service/auth_state_manager.dart';
 
 class AppDrawer extends StatefulWidget {
   final String userEmail;
@@ -26,6 +28,7 @@ class AppDrawer extends StatefulWidget {
 class _AppDrawerState extends State<AppDrawer> {
   final AuthManager _authManager = AuthManager();
   final AccountService _accountService = AccountService();
+  final AuthStateManager _authStateManager = AuthStateManager();
 
   Future<void> _handleLogout() async {
     final shouldLogout = await showDialog<bool>(
@@ -52,19 +55,28 @@ class _AppDrawerState extends State<AppDrawer> {
 
     if (shouldLogout == true && mounted) {
       try {
-        debugPrint('🔓 Fazendo logout...');
+        debugPrint('🔓 [DRAWER] Fazendo logout...');
 
+        // ✅ Notificar que usuário fez logout
+        _authStateManager.notifyLoggedOut();
+
+        // ✅ 1. Parar qualquer timer/polling ativo
+        debugPrint('🛑 [DRAWER] Parando polling/detecção...');
+
+        // ✅ 2. Limpar dados sensíveis
+        debugPrint('🗑️ [DRAWER] Limpando dados do aplicativo...');
         await _authManager.clearTokens();
 
-        debugPrint('✅ Logout realizado com sucesso');
+        debugPrint('✅ [DRAWER] Logout realizado com sucesso');
 
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(); // Fecha o drawer
+        Navigator.of(context).pop(); // Fecha qualquer dialog aberto
 
         if (mounted) {
           Navigator.pushReplacementNamed(context, LoginPage.routePath);
         }
       } catch (e) {
-        debugPrint('❌ Erro ao fazer logout: $e');
+        debugPrint('❌ [DRAWER] Erro ao fazer logout: $e');
         if (mounted) {
           ScaffoldMessenger.of(
             context,
@@ -130,9 +142,16 @@ class _AppDrawerState extends State<AppDrawer> {
         final success = await _accountService.deleteAccount(userId, token);
 
         if (success) {
-          Navigator.of(context).pop();
+          Navigator.of(context).pop(); // Fecha dialog de carregamento
 
-          Navigator.of(context).pop();
+          Navigator.of(context).pop(); // Fecha o drawer
+
+          // ✅ Notificar que conta foi deletada
+          _authStateManager.notifyAccountDeleted();
+
+          // ✅ Limpar tokens após sucesso
+          debugPrint('🗑️ [DRAWER] Limpando tokens após exclusão...');
+          await _authManager.clearTokens();
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -145,10 +164,11 @@ class _AppDrawerState extends State<AppDrawer> {
             );
 
             await Future.delayed(const Duration(seconds: 1));
-            Navigator.pushReplacementNamed(context, LoginPage.routePath);
+            // Voltar para Splash para permitir recadastramento
+            Navigator.pushReplacementNamed(context, SplashPage.routePath);
           }
         } else {
-          Navigator.of(context).pop();
+          Navigator.of(context).pop(); // Fecha dialog de carregamento
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -159,9 +179,12 @@ class _AppDrawerState extends State<AppDrawer> {
           }
         }
       } catch (e) {
-        Navigator.of(context).pop();
+        // Fecha dialog de carregamento se ainda estiver aberto
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        }
 
-        debugPrint('❌ Erro ao deletar conta: $e');
+        debugPrint('❌ [DRAWER] Erro ao deletar conta: $e');
         if (mounted) {
           ScaffoldMessenger.of(
             context,

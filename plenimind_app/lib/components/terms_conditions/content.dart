@@ -115,25 +115,23 @@ class TermsContent extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(screenWidth * 0.04),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children:
-                _sections
-                    .map(
-                      (section) => Padding(
-                        padding: EdgeInsets.only(bottom: screenWidth * 0.04),
-                        child: TermsSection(
-                          title: section['title']!,
-                          content: section['content']!,
-                          screenWidth: screenWidth,
-                        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children:
+              _sections
+                  .map(
+                    (section) => Padding(
+                      padding: EdgeInsets.only(bottom: screenWidth * 0.04),
+                      child: TermsSection(
+                        title: section['title']!,
+                        content: section['content']!,
+                        screenWidth: screenWidth,
                       ),
-                    )
-                    .toList(),
-          ),
+                    ),
+                  )
+                  .toList(),
         ),
       ),
     );

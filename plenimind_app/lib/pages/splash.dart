@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:plenimind_app/pages/login.dart';
+import 'package:plenimind_app/pages/status_page.dart';
+import 'package:plenimind_app/core/auth/auth_manager.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -13,6 +15,41 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
+  late AuthManager _authManager;
+
+  @override
+  void initState() {
+    super.initState();
+    _authManager = AuthManager();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    // Aguardar um pouco para que os tokens sejam carregados
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    // Recarregar tokens do SharedPreferences
+    await _authManager.reloadTokens();
+
+    debugPrint(
+      '🔍 [SPLASH] Verificando autenticação: ${_authManager.isLoggedIn}',
+    );
+
+    if (_authManager.isLoggedIn) {
+      debugPrint('✅ [SPLASH] Usuário autenticado - indo para Status Page');
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, StatusPage.routePath);
+      }
+    } else {
+      debugPrint('❌ [SPLASH] Usuário não autenticado - indo para Login');
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, LoginPage.routePath);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;

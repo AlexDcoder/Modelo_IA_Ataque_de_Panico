@@ -5,6 +5,8 @@ import 'package:plenimind_app/components/utils/loading_overlay.dart';
 import 'package:plenimind_app/pages/profile.dart';
 import 'package:plenimind_app/pages/status_page.dart';
 import 'package:plenimind_app/core/auth/auth_service.dart';
+import 'package:plenimind_app/core/auth/permission_manager.dart';
+import 'package:plenimind_app/service/auth_state_manager.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -66,6 +68,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() => _isSignUpLoading = true);
 
     try {
+      // ✅ Resetar termos aceitos para novo cadastro
+      await PermissionManager.setTermsAccepted(false);
+      debugPrint('🔄 [LOGIN] Termos resetados para novo cadastro');
+
       Navigator.pushNamed(
         context,
         ProfilePage.routePath,
@@ -101,6 +107,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       if (!mounted) return;
 
       if (result != null) {
+        // ✅ Notificar que usuário fez login
+        AuthStateManager().notifyLoggedIn();
+
         _showSnackBar('Login realizado com sucesso!');
         Navigator.pushReplacementNamed(context, StatusPage.routePath);
       } else {

@@ -34,7 +34,7 @@ class TermsSection extends StatelessWidget {
           content,
           style: TextStyle(
             fontSize: screenWidth * 0.035,
-            color: colorScheme.surface.withValues(alpha: 0.7),
+            color: colorScheme.onSurface,
             height: 1.5,
           ),
           textAlign: TextAlign.justify,

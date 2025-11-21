@@ -12,6 +12,7 @@ import 'package:plenimind_app/service/notification_service.dart';
 import 'package:plenimind_app/utils/fake_data_generator.dart';
 import 'package:plenimind_app/schemas/response/user_personal_request.dart';
 import 'package:plenimind_app/components/utils/loading_overlay.dart';
+import 'package:plenimind_app/service/auth_state_manager.dart';
 
 class StatusPage extends StatefulWidget {
   static const String routePath = '/status';
@@ -26,6 +27,7 @@ class _StatusPageState extends State<StatusPage> {
   final VitalDataService _vitalDataService = VitalDataService();
   final NotificationService _notificationService = NotificationService();
   final AuthManager _authManager = AuthManager();
+  final AuthStateManager _authStateManager = AuthStateManager();
   final DetectionTimeManager _detectionTimeManager =
       DetectionTimeManager(); // ✅ NOVA INSTÂNCIA
 
@@ -52,6 +54,12 @@ class _StatusPageState extends State<StatusPage> {
   @override
   void initState() {
     super.initState();
+    // ✅ Sincronizar estado de autenticação
+    _authStateManager.notifyLoggedIn();
+    debugPrint(
+      '✅ [STATUS_PAGE] AuthStateManager sincronizado como AUTENTICADO',
+    );
+
     _loadUserData();
     _setupDetectionTimeListener(); // ✅ CONFIGURAR OUVINTE
   }
