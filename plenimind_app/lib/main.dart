@@ -61,7 +61,7 @@ class MyApp extends StatelessWidget {
           elevation: 2,
           centerTitle: true,
         ),
-        // ✅ CORREÇÃO: Usar CardThemeData em vez de CardTheme
+        // ✅ CORREÇÃO: Usar CardThemeData (que é o tipo correto)
         cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(

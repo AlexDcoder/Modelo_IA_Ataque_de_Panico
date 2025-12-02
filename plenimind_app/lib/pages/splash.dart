@@ -16,36 +16,48 @@ class SplashPage extends StatefulWidget {
 
 class _SplashPageState extends State<SplashPage> {
   late AuthManager _authManager;
+  bool _isCheckingAuth = false;
 
   @override
   void initState() {
     super.initState();
     _authManager = AuthManager();
-    _checkAuthStatus();
+    // ✅ REMOVIDA a navegação automática - agora espera o botão
   }
 
-  Future<void> _checkAuthStatus() async {
-    // Aguardar um pouco para que os tokens sejam carregados
-    await Future.delayed(const Duration(milliseconds: 500));
+  Future<void> _handleStartButton() async {
+    if (_isCheckingAuth) return;
 
-    if (!mounted) return;
+    setState(() => _isCheckingAuth = true);
 
-    // Recarregar tokens do SharedPreferences
-    await _authManager.reloadTokens();
+    try {
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _authManager.reloadTokens();
 
-    debugPrint(
-      '🔍 [SPLASH] Verificando autenticação: ${_authManager.isLoggedIn}',
-    );
+      debugPrint(
+        '🔍 [SPLASH] Verificando autenticação: ${_authManager.isLoggedIn}',
+      );
 
-    if (_authManager.isLoggedIn) {
-      debugPrint('✅ [SPLASH] Usuário autenticado - indo para Status Page');
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, StatusPage.routePath);
+      if (_authManager.isLoggedIn) {
+        debugPrint('✅ [SPLASH] Usuário autenticado - indo para Status Page');
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, StatusPage.routePath);
+        }
+      } else {
+        debugPrint('❌ [SPLASH] Usuário não autenticado - indo para Login');
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, LoginPage.routePath);
+        }
       }
-    } else {
-      debugPrint('❌ [SPLASH] Usuário não autenticado - indo para Login');
+    } catch (e) {
+      debugPrint('❌ [SPLASH] Erro ao verificar autenticação: $e');
+      // Em caso de erro, vai para o login
       if (mounted) {
         Navigator.pushReplacementNamed(context, LoginPage.routePath);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCheckingAuth = false);
       }
     }
   }
@@ -150,9 +162,8 @@ class _SplashPageState extends State<SplashPage> {
                     child: Padding(
                       padding: EdgeInsets.only(bottom: screenHeight * 0.02),
                       child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, LoginPage.routePath);
-                            },
+                            onPressed:
+                                _isCheckingAuth ? null : _handleStartButton,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: theme.colorScheme.primary,
                               minimumSize: Size(
@@ -163,14 +174,24 @@ class _SplashPageState extends State<SplashPage> {
                                 borderRadius: BorderRadius.circular(24),
                               ),
                             ),
-                            child: Text(
-                              'Começar',
-                              style: GoogleFonts.interTight(
-                                fontSize: screenWidth * 0.045,
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onPrimary,
-                              ),
-                            ),
+                            child:
+                                _isCheckingAuth
+                                    ? SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: theme.colorScheme.onPrimary,
+                                      ),
+                                    )
+                                    : Text(
+                                      'Começar',
+                                      style: GoogleFonts.interTight(
+                                        fontSize: screenWidth * 0.045,
+                                        fontWeight: FontWeight.w600,
+                                        color: theme.colorScheme.onPrimary,
+                                      ),
+                                    ),
                           )
                           .animate()
                           .fadeIn(delay: 910.ms, duration: 600.ms)
